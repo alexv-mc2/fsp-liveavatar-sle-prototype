@@ -1,4 +1,6 @@
-# Medizinische Deutsch-Phrasebank
+# Medizinische Deutsch-Phrasebank – SLE reconciled v1
+
+**Status:** `[PROTOTYPE][VERIFIED][REVIEW]` je nach Aussage
 
 ## Patientengerechte Sprache
 
@@ -7,24 +9,24 @@
 - „Können Sie mir genauer beschreiben, wo die Schmerzen auftreten?“
 - „Gibt es etwas, das die Beschwerden verstärkt oder lindert?“
 - „Ich verstehe, dass Sie das beunruhigt.“
-- „Wir müssen die Ursache noch genauer untersuchen.“
-- „Eine Verdachtsdiagnose ist noch keine gesicherte Diagnose.“
+- „Es gibt mehrere Hinweise, aber die Diagnose ist noch nicht sicher.“ `[VERIFIED]`
+- „Eine Verdachtsdiagnose ist noch keine gesicherte Diagnose.“ `[VERIFIED]`
+- „Klassifikationskriterien helfen bei der Einordnung, ersetzen aber nicht die ärztliche Diagnose.“ `[VERIFIED]`
 
 ## Medizinische Übergabe
 
-- „Ich möchte Ihnen eine 58-jährige Patientin mit … vorstellen.“
-- „Die Beschwerden bestehen seit … und zeigen einen … Verlauf.“
-- „An relevanten Begleitsymptomen berichtet die Patientin …“
-- „Als Verdachtsdiagnose kommt … in Betracht; differenzialdiagnostisch sind … zu bedenken.“
-- „Zur weiteren Abklärung würde ich … veranlassen.“
+- „Ich möchte Ihnen Frau Leonie Hartmann, 29 Jahre, vorstellen …“ `[PROTOTYPE]`
+- „Seit sechs Wochen symmetrische Beschwerden der MCP-, PIP- und Handgelenke mit 60–90-minütiger Morgensteifigkeit.“
+- „Photosensitives malarisches Erythem, Fatigue, subfebrile Temperaturen bis 38,2 °C.“
+- „Dringender Verdacht auf Erstmanifestation eines SLE … derzeit kein Hinweis auf Lupusnephritis.“ `[VERIFIED]`
+- „ANA sind ein sensitiver Screeningparameter, beweisen SLE aber nicht allein.“ `[VERIFIED]`
 
 ## Registerwechsel
 
 | Patientengerecht | Fachsprachlich |
 |---|---|
-| Gelenkschmerzen | Arthralgien |
-| Hautrötung im Gesicht | mögliches malarisches Exanthem |
-| lichtempfindlich | photosensibel |
-| wenig weiße Blutkörperchen | Leukopenie |
-
-<!-- TODO(DEEPSEARCH): Verify disease-specific wording and avoid premature diagnostic certainty. -->
+| „Meine Hände tun weh und sind morgens lange steif.“ | Symmetrische Gelenkbeteiligung MCP/PIP/Handgelenke mit prolongierter Morgensteifigkeit |
+| „Nach Sonne wird mein Gesicht rot.“ | Photosensitives malarisches Exanthem / V. a. akut kutanen Lupus `[REVIEW]` |
+| „Knapp über 38 Grad.“ | Subfebrile Temperaturen bis 38,2 °C (kein EULAR-Fieberpunkt) `[VERIFIED]` |
+| „Zu wenig weiße Blutkörperchen.“ | Leukopenie |
+| „Die Nierenwerte sind normal.“ | Normale Nierenretentionsparameter; **aktuell** kein Hinweis auf Nephritis `[VERIFIED]` |

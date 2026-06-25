@@ -1,32 +1,51 @@
 export const SOURCE_STATUS = {
   pdfSeed: {
     id: "SRC-PDF-001",
-    status: "UNVERIFIED_FROM_PDF",
-    use: "Case structure and provisional fictional facts only",
+    status: "[PDF]",
+    use: "FSP dramaturgy / slide structure; not medical authority",
+  },
+  deepSearch: {
+    id: "SRC-DS-001",
+    status: "[VERIFIED]",
+    use: "Medical/FSP corrections and source traceability",
+  },
+  prototypeCase: {
+    id: "SRC-CASE-001",
+    status: "[PROTOTYPE]",
+    use: "Canonical reconciled SLE case v1 (Leonie Hartmann)",
   },
   zagMuenster: {
     id: "SRC-NRW-001",
-    status: "RECHECK_REQUIRED",
+    status: "[REVIEW]",
     use: "NRW approbation pathway wording",
   },
   aekno: {
     id: "SRC-AEKNO-001",
-    status: "RECHECK_REQUIRED",
-    use: "Düsseldorf/Ärztekammer Nordrhein exam context",
+    status: "[VERIFIED]",
+    use: "Düsseldorf/ÄKNo exam context (public description only)",
   },
   aeknoExamFlow: {
     id: "SRC-AEKNO-002",
-    status: "RECHECK_REQUIRED",
-    use: "Exam phases and timing",
+    status: "[VERIFIED]",
+    use: "Three-station exam phases and timing",
   },
   sleGuideline: {
     id: "SRC-SLE-GUIDELINE-001",
-    status: "PENDING_DEEPSEARCH",
-    use: "Canonical medical facts after review",
+    status: "[VERIFIED]",
+    use: "German S3 SLE management principles (DeepSearch S3)",
   },
-  sleEdu: {
-    id: "SRC-SLE-EDU-001",
-    status: "PENDING_DEEPSEARCH",
-    use: "Patient-friendly explanations",
+  sleClassification: {
+    id: "SRC-SLE-CLASS-001",
+    status: "[VERIFIED]",
+    use: "2019 EULAR/ACR classification rules",
   },
 } as const;
+
+export const PROVENANCE_LABELS = [
+  "[PDF]",
+  "[VERIFIED]",
+  "[PROTOTYPE]",
+  "[INFERENCE]",
+  "[REVIEW]",
+  "[PDF-CONFLICT]",
+] as const;

@@ -1,21 +1,22 @@
-# Interne Trainingsrubrik
+# Interne Trainingsrubrik – reconciled v1
 
-**Kein offizieller ÄKNo-Bewertungsbogen. Kein Bestehen/Nichtbestehen.**
+**Status:** `[PROTOTYPE][REVIEW]` – kein offizieller ÄKNo-Bewertungsbogen
 
-| Kategorie | Vorläufiges Gewicht | Automatisierbar |
+| Kategorie | Gewicht | Automatisierbar |
 |---|---:|---|
 | Anamnesestruktur und Abdeckung | 30 % | teilweise |
-| Patientengerechte Sprache | 20 % | teilweise / Human Review |
-| Medizinische Fachsprache | 15 % | teilweise / Human Review |
-| Dokumentationsvollständigkeit | 15 % | teilweise |
-| Arzt-Arzt-Übergabe | 15 % | teilweise / Human Review |
+| Patientengerechte Sprache | 20 % | Human Review |
+| Medizinische Fachsprache | 15 % | Human Review |
+| Verdacht vs. Diagnose (dringender Verdacht) | 10 % | teilweise |
+| Dokumentationsvollständigkeit | 10 % | teilweise |
+| Arzt-Arzt-Übergabe inkl. Nierenstatement | 10 % | Human Review |
 | Sicherheit und Rollenbindung | 5 % | ja, regelbasiert |
 
-Automatisch erfasst werden zunächst nur:
+## Automatisch erfasst
 
-- angesprochene Checklistenbereiche
-- korrekt ausgelöste Faktenfreigaben
-- Sicherheitsflags
+- Checklistenbereiche / `revealedFactIds`
+- Blockierte Labor- und Klassifikationsleaks in Patientenphase
+- Sicherheitsflags (real-user medical advice, 112)
 - Phasenabschluss
 
-Medizinische Richtigkeit, sprachliche Nuancen und klinische Angemessenheit bleiben bis zur Validierung Human-Review-Punkte.
+Medizinische Richtigkeit und dispositionelle Entscheidungen bleiben `[REVIEW]` bis zur Freigabe durch Rheumatologie/interne Medizin und FSP-Trainer.

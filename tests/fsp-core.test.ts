@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { PATCH as phaseRoutePatch } from "@/app/api/sessions/[sessionId]/phase/route";
 import { POST as chatRoutePost } from "@/app/v1/chat/completions/route";
-import { loadScenario } from "@/server/fsp/scenarioLoader";
+import { loadScenario, clearScenarioCacheForTests } from "@/server/fsp/scenarioLoader";
 import { InMemorySessionStore } from "@/server/fsp/scenarioState";
 import { processChatCompletion } from "@/server/routes/chatCompletions";
 import { resetSession } from "@/server/routes/sessions";
 
-const scenario = loadScenario();
+let scenario = loadScenario();
 let store: InMemorySessionStore;
 
 beforeEach(() => {
+  clearScenarioCacheForTests();
+  scenario = loadScenario();
   store = new InMemorySessionStore();
 });
 
@@ -23,6 +25,19 @@ function chat(sessionId: string, content: string) {
     { store, scenario },
   );
 }
+
+describe("canonical case opening", () => {
+  it("starts with the reconciled German patient opening", () => {
+    const session = store.create(scenario);
+    const opening = session.transcriptTurns[0]?.content ?? "";
+
+    expect(opening).toContain("sechs Wochen");
+    expect(opening).toContain("Handgelenke");
+    expect(opening).toContain("Sonne");
+    expect(scenario.patient.display_name).toBe("Frau Leonie Hartmann");
+    expect(scenario.metadata.content_status).toBe("RECONCILED_V1");
+  });
+});
 
 describe("deterministic hidden-fact policy", () => {
   it("does not reveal a hidden fact before a matching question", () => {
@@ -49,6 +64,16 @@ describe("deterministic hidden-fact policy", () => {
     expect(content).toContain("Laborwerte kenne ich nicht");
     expect(content).not.toContain("1:640");
     expect(response.x_fsp.blocked_fact_ids).toContain("lab_ana");
+  });
+
+  it("blocks EULAR/ACR classification score in the patient phase", () => {
+    const session = store.create(scenario);
+    const response = chat(session.id, "Wie viele EULAR-Punkte haben Sie?");
+    const content = response.choices[0].message.content;
+
+    expect(content).toMatch(/Klassifikation|Punkten|Laborwerte kenne ich nicht/i);
+    expect(content).not.toContain("25 Punkte");
+    expect(response.x_fsp.blocked_fact_ids).toContain("classification_eular_acr");
   });
 });
 
@@ -143,5 +168,13 @@ describe("phase route validation", () => {
 
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("invalid_json");
+  });
+});
+
+describe("renal wording in examiner facts", () => {
+  it("uses no-current-evidence phrasing for renal status", () => {
+    const renal = scenario.facts.find((fact) => fact.id === "lab_renal");
+    expect(renal?.answer_de).toMatch(/aktuell kein Hinweis auf Lupusnephritis/i);
+    expect(renal?.answer_de).not.toMatch(/nephritis ausgeschlossen/i);
   });
 });

@@ -6,13 +6,13 @@ export function LabCallPlaceholder() {
           <p className="section-kicker">Laboranruf · Text-Platzhalter</p>
           <h2 id="lab-title">Laborphase</h2>
         </div>
-        <span className="status-pill status-unverified">UNVERIFIED_FROM_PDF</span>
+        <span className="status-pill status-reconciled">RECONCILED_V1</span>
       </div>
       <div className="notice notice-warning">
-        Konkrete Laborwerte sind im Szenario ausschließlich als ungeprüfter PDF-Seed hinterlegt. Eine fachliche Interpretation wird vor DeepSearch und ärztlicher Prüfung nicht angeboten.
+        Laborwerte sind fiktional und mit Provenienzlabels ([PROTOTYPE]/[VERIFIED]) im Szenario hinterlegt. Klassifikation ≠ Diagnose. Freigabe erst nach ärztlicher und FSP-Trainer-Prüfung.
       </div>
       <p className="panel-hint">
-        Der spätere Laboranruf soll Wiederholung kritischer Werte, Rückfragen und phasengebundene Freigaben prüfen.
+        In der Laborphase können ANA, Anti-dsDNA, Blutbild, Komplement und UPCR phasengebunden abgerufen werden. Renale Formulierung: aktuell kein Hinweis auf Lupusnephritis.
       </p>
     </section>
   );
