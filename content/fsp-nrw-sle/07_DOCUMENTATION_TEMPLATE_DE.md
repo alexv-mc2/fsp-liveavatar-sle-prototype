@@ -15,7 +15,7 @@
 | Verdachtsdiagnose | **Dringender V. a.** Erstmanifestation SLE mit kutaner, muskuloskelettaler und hämatologischer Beteiligung |
 | Differenzialdiagnosen | RA, virale Arthritis, PsA, Sjögren, Myositis, ANCA-Vaskulitis, DIL, Fibromyalgie |
 | Weitere Diagnostik | Blutbild, BSG/CRP, Kreatinin/eGFR, Urin/UPCR, ANA, Anti-dsDNA, Anti-Sm, C3/C4, aPL, CK, Schwangerschaftstest; rheumatologische Mitbeurteilung |
-| Therapievorschläge | Bis Verifizierung keine unkritische Selbstmedikation; UV-Schutz; bei bestätigtem SLE HCQ als Basis `[VERIFIED][REVIEW]` |
+| Therapievorschläge | Bis Diagnoseverifizierung keine unkritische Selbstmedikation; UV-Schutz und Sicherheitsnetz. Fachärztliche Therapieplanung nach bestätigtem SLE und `[REVIEW]`-Freigabe; mögliche Basistherapie (z. B. HCQ) nur nach individueller ärztlicher Prüfung, nicht aus der Simulation verordnen |
 
 ## Häufige Trainingsfehler
 

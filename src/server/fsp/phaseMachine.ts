@@ -56,7 +56,7 @@ export function transitionPhase(
     store.appendTurn(
       session,
       "system",
-      "Laborphase: fiktionale Befunde mit Provenienzlabels ([PROTOTYPE]/[VERIFIED]); Klassifikation ≠ Diagnose.",
+      "Laborphase (RECONCILED_V1): fiktionale Befunde mit Provenienzlabels [PDF], [VERIFIED], [PROTOTYPE], [INFERENCE], [REVIEW]; Klassifikation ≠ Diagnose.",
       "phase_machine",
     );
   }

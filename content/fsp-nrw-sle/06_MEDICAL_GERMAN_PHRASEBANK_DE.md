@@ -17,7 +17,7 @@
 
 - „Ich möchte Ihnen Frau Leonie Hartmann, 29 Jahre, vorstellen …“ `[PROTOTYPE]`
 - „Seit sechs Wochen symmetrische Beschwerden der MCP-, PIP- und Handgelenke mit 60–90-minütiger Morgensteifigkeit.“
-- „Photosensitives malarisches Erythem, Fatigue, subfebrile Temperaturen bis 38,2 °C.“
+- „Photosensibles Gesichtsexanthem (malar-Typ), Fatigue, subfebrile Temperaturen bis 38,2 °C.“ `[REVIEW]`
 - „Dringender Verdacht auf Erstmanifestation eines SLE … derzeit kein Hinweis auf Lupusnephritis.“ `[VERIFIED]`
 - „ANA sind ein sensitiver Screeningparameter, beweisen SLE aber nicht allein.“ `[VERIFIED]`
 
@@ -26,7 +26,7 @@
 | Patientengerecht | Fachsprachlich |
 |---|---|
 | „Meine Hände tun weh und sind morgens lange steif.“ | Symmetrische Gelenkbeteiligung MCP/PIP/Handgelenke mit prolongierter Morgensteifigkeit |
-| „Nach Sonne wird mein Gesicht rot.“ | Photosensitives malarisches Exanthem / V. a. akut kutanen Lupus `[REVIEW]` |
+| „Nach Sonne wird mein Gesicht rot.“ | Photosensibles Gesichtsexanthem (malar-Typ) / V. a. kutane Beteiligung `[REVIEW]` |
 | „Knapp über 38 Grad.“ | Subfebrile Temperaturen bis 38,2 °C (kein EULAR-Fieberpunkt) `[VERIFIED]` |
 | „Zu wenig weiße Blutkörperchen.“ | Leukopenie |
 | „Die Nierenwerte sind normal.“ | Normale Nierenretentionsparameter; **aktuell** kein Hinweis auf Nephritis `[VERIFIED]` |
