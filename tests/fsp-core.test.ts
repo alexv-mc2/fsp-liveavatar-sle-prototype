@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { PATCH as phaseRoutePatch } from "@/app/api/sessions/[sessionId]/phase/route";
 import { POST as chatRoutePost } from "@/app/v1/chat/completions/route";
 import { loadScenario } from "@/server/fsp/scenarioLoader";
 import { InMemorySessionStore } from "@/server/fsp/scenarioState";
@@ -107,5 +108,40 @@ describe("OpenAI-compatible route", () => {
     expect(body.usage.total_tokens).toBeGreaterThan(0);
     expect(body.x_fsp.mock).toBe(true);
     expect(typeof body.x_fsp.session_id).toBe("string");
+  });
+
+  it("returns 400 when no user message is present", async () => {
+    const request = new Request("http://localhost/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "fsp-sle-test",
+        messages: [{ role: "system", content: "Only system context." }],
+      }),
+    });
+
+    const response = await chatRoutePost(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("missing_user_message");
+  });
+});
+
+describe("phase route validation", () => {
+  it("returns 400 for malformed JSON", async () => {
+    const request = new Request("http://localhost/api/sessions/test-id/phase", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: "{",
+    });
+
+    const response = await phaseRoutePatch(request, {
+      params: Promise.resolve({ sessionId: "test-id" }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("invalid_json");
   });
 });

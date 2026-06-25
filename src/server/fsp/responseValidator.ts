@@ -12,7 +12,8 @@ export function validatePatientResponse(
   phase: FspPhase,
   scenario: SleScenario,
 ): ResponseValidationResult {
-  const trimmed = responseDe.trim().slice(0, 480);
+  const cleaned = responseDe.trim();
+  const trimmed = cleaned.slice(0, 480);
 
   if (!isPatientConversationPhase(phase)) {
     return {
@@ -30,7 +31,7 @@ export function validatePatientResponse(
     /\banti[- ]?dsdna.*hoch positiv\b/i,
   ];
 
-  if (labLeakPatterns.some((pattern) => pattern.test(trimmed))) {
+  if (labLeakPatterns.some((pattern) => pattern.test(cleaned))) {
     return {
       responseDe: scenario.fallbacks.lab_in_patient_phase_de,
       replaced: true,

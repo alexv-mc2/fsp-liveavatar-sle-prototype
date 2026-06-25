@@ -1,4 +1,8 @@
-import type { SessionState, TranscriptTurn } from "./types";
+import type {
+  SessionState,
+  TranscriptSource,
+  TranscriptTurn,
+} from "./types";
 import type { InMemorySessionStore } from "./scenarioState";
 
 export function appendTranscriptTurn(
@@ -6,7 +10,7 @@ export function appendTranscriptTurn(
   session: SessionState,
   role: "user" | "assistant" | "system",
   content: string,
-  source: "opening" | "text_mock" | "guardrail" | "phase_machine" | "feedback",
+  source: TranscriptSource,
 ): void {
   store.appendTurn(session, role, content, source);
 }

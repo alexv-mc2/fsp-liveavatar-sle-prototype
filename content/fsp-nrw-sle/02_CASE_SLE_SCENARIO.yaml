@@ -251,7 +251,7 @@ patient_questions:
   - "Ist so etwas vererbbar?"
   - "Muss ich ins Krankenhaus?"
   - "Hängt das mit der Pille zusammen?"
-  - "Ist Arthrose dasselbe wie Lupus?"
+  - "Ist das schlimm?"
 
 forbidden_patient_behaviors:
   - "Keine Diagnose als gesicherte Tatsache behaupten."

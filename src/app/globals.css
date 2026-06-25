@@ -498,10 +498,10 @@ h3 {
 }
 
 .avatar-speaking .avatar-portrait {
-  animation: avatarPulse 1.5s ease-in-out infinite;
+  animation: avatar-pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes avatarPulse {
+@keyframes avatar-pulse {
   50% {
     transform: scale(1.025);
     box-shadow: 0 22px 72px rgba(15, 93, 95, 0.24);

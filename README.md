@@ -77,7 +77,7 @@ The standard OpenAI-like fields are returned together with an `x_fsp` extension 
 
 ## Waiting for DeepSearch and physician review
 
-All disease-specific facts, laboratory values, diagnostic wording, differential diagnoses, treatment details, and clinical scoring weights. The PDF seed is not treated as an authoritative source.
+All disease-specific facts, laboratory values, diagnostic wording, differential diagnoses, treatment details, and clinical scoring weights remain unverified from the PDF seed, which is not treated as an authoritative source.
 
 ## Waiting for the HeyGen contract spike
 

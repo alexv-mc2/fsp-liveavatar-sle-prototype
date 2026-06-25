@@ -1,7 +1,10 @@
 import { ZodError } from "zod";
 import { InvalidPhaseTransitionError } from "../fsp/phaseMachine";
 import { SessionNotFoundError } from "../fsp/scenarioState";
-import { UnsupportedStreamingError } from "./chatCompletions";
+import {
+  MissingUserMessageError,
+  UnsupportedStreamingError,
+} from "./chatCompletions";
 
 export interface HttpErrorPayload {
   status: number;
@@ -64,6 +67,32 @@ export function toHttpError(error: unknown): HttpErrorPayload {
           message: error.message,
           type: "invalid_request_error",
           code: "streaming_not_implemented",
+        },
+      },
+    };
+  }
+
+  if (error instanceof MissingUserMessageError) {
+    return {
+      status: 400,
+      body: {
+        error: {
+          message: error.message,
+          type: "invalid_request_error",
+          code: "missing_user_message",
+        },
+      },
+    };
+  }
+
+  if (error instanceof SyntaxError) {
+    return {
+      status: 400,
+      body: {
+        error: {
+          message: "Invalid JSON in request body.",
+          type: "invalid_request_error",
+          code: "invalid_json",
         },
       },
     };

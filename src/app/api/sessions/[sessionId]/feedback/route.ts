@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ sessionId: string }> };
 
-async function handle(context: RouteContext) {
+export async function POST(_request: Request, context: RouteContext) {
   try {
     const { sessionId } = await context.params;
     return NextResponse.json(generateFeedback(sessionId));
@@ -15,12 +15,4 @@ async function handle(context: RouteContext) {
     const httpError = toHttpError(error);
     return NextResponse.json(httpError.body, { status: httpError.status });
   }
-}
-
-export async function GET(_request: Request, context: RouteContext) {
-  return handle(context);
-}
-
-export async function POST(_request: Request, context: RouteContext) {
-  return handle(context);
 }

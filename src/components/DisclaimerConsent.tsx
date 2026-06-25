@@ -63,13 +63,21 @@ export function DisclaimerConsent({
           <span>Ich verwende ausschließlich fiktive Angaben und keine realen Patientendaten.</span>
         </label>
 
-        {error ? <p className="form-error">{error}</p> : null}
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         <button
           className="button button-primary button-large"
           type="button"
           disabled={!canStart}
-          onClick={() => void onConfirm()}
+          onClick={() => {
+            void Promise.resolve(onConfirm()).catch(() => {
+              /* caller surfaces failures via the error prop */
+            });
+          }}
         >
           {busy ? "Sitzung wird angelegt …" : "Simulation starten"}
         </button>

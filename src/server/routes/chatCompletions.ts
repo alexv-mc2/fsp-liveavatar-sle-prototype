@@ -1,4 +1,6 @@
+import { NextResponse } from "next/server";
 import { z } from "zod";
+import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
 import {
@@ -75,6 +77,13 @@ export class UnsupportedStreamingError extends Error {
   }
 }
 
+export class MissingUserMessageError extends Error {
+  constructor() {
+    super("At least one user message is required.");
+    this.name = "MissingUserMessageError";
+  }
+}
+
 function contentToText(content: z.infer<typeof ChatMessageSchema>["content"]): string {
   if (typeof content === "string") {
     return content;
@@ -90,7 +99,7 @@ function latestUserMessage(
 ): string {
   const latest = [...messages].reverse().find((message) => message.role === "user");
   if (!latest) {
-    throw new Error("At least one user message is required.");
+    throw new MissingUserMessageError();
   }
   return contentToText(latest.content);
 }
@@ -230,4 +239,19 @@ export function processChatCompletion(
       session: serialized,
     },
   };
+}
+
+export async function handleChatCompletionPost(request: Request) {
+  try {
+    const body = await request.json();
+    const result = processChatCompletion(body, {
+      headerSessionId: request.headers.get("x-fsp-session-id") ?? undefined,
+    });
+    return NextResponse.json(result, {
+      headers: { "x-fsp-session-id": result.x_fsp.session_id },
+    });
+  } catch (error) {
+    const httpError = toHttpError(error);
+    return NextResponse.json(httpError.body, { status: httpError.status });
+  }
 }

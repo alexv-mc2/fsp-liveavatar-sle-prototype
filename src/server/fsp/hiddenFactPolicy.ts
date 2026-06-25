@@ -79,10 +79,11 @@ export function resolveHiddenFacts(
     };
   }
 
-  const newlyRevealed: string[] = [];
   const now = new Date().toISOString();
+  const surfaced = allowed.slice(0, 2);
+  const newlyRevealed: string[] = [];
 
-  for (const { fact, keyword } of allowed) {
+  for (const { fact, keyword } of surfaced) {
     if (!session.revealedFactIds.has(fact.id)) {
       session.revealedFactIds.add(fact.id);
       newlyRevealed.push(fact.id);
@@ -103,12 +104,9 @@ export function resolveHiddenFacts(
   session.updatedAt = now;
 
   return {
-    responseDe: allowed
-      .slice(0, 2)
-      .map((entry) => entry.fact.answer_de)
-      .join(" "),
+    responseDe: surfaced.map((entry) => entry.fact.answer_de).join(" "),
     revealedFactIds: newlyRevealed,
     blockedFactIds: blocked.map((entry) => entry.fact.id),
-    matchedKeywords: [...allowed, ...blocked].map((entry) => entry.keyword),
+    matchedKeywords: [...surfaced, ...blocked].map((entry) => entry.keyword),
   };
 }
