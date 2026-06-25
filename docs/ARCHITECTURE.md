@@ -1,0 +1,79 @@
+# Architecture – FSP LiveAvatar SLE Prototype
+
+## Scope
+
+This repository contains one standalone fictional SLE case. It is not part of ExpoWall, brAIn, ToolDii, or another MC² repository. It is not a course platform, clinical decision-support system, or officially approved examination product.
+
+## Current request flow
+
+```text
+Next.js frontend
+  -> POST /api/sessions
+  -> text-based PTT mock
+  -> POST /v1/chat/completions
+  -> guardrails
+  -> deterministic keyword/intent matching
+  -> hidden-fact policy
+  -> response validator
+  -> in-memory session/transcript state
+```
+
+The compatibility route `POST /chat/completions` uses the same handler. Streaming is deliberately rejected in v0 with an OpenAI-style error.
+
+## Ownership boundaries
+
+### Frontend
+
+- consent and no-real-data warning
+- mock avatar surface
+- phase navigation
+- text PTT substitute
+- transcript rendering
+- documentation, lab, handover, and feedback placeholders
+
+### Backend
+
+- scenario schema validation
+- phase state
+- hidden-fact release events
+- safety exits for real-user medical requests
+- patient-phase lab blocking
+- transcript state
+- non-official checklist coverage
+
+### Content
+
+All case-seeded medical content is marked `UNVERIFIED_FROM_PDF`. The source register separates PDF-derived content, official-context items requiring recheck, and future medical guideline sources.
+
+## In-memory limitation
+
+The global in-memory store is suitable only for one local Node process. It survives route-bundle boundaries and development hot reloads in that process, but it is not a production persistence strategy and must not be treated as durable or multi-instance safe.
+
+## HeyGen contract spike still required
+
+Before connecting LiveAvatar FULL Mode, verify against exact credentials and current provider documentation:
+
+1. backend session-token contract and secret handling
+2. Custom LLM URL composition (`/v1/chat/completions` versus `/chat/completions`)
+3. request metadata available for stable FSP session correlation
+4. streaming/SSE expectations and timeout behavior
+5. Push-to-Talk start, stop, interruption, and turn-finalization semantics
+6. transcript event ordering, duplication, and reconciliation
+7. explicit stop-session behavior
+8. provider session-event deletion and retention guarantees
+9. German STT/TTS pronunciation for the glossary
+
+`HeyGenAvatarShell.tsx` is the UI integration boundary and contains matching TODO markers. `src/integrations/heygen/contracts.ts` defines the provider-neutral adapter surface without assuming undocumented fields.
+
+## DeepSearch and physician-review boundary
+
+The following remain blocked from canonical use:
+
+- final SLE symptom set and chronology
+- exact laboratory values and interpretation
+- classification/diagnostic wording
+- treatment and dosage statements
+- admission versus ambulatory recommendations
+- pregnancy/OCP/APS content
+- commission-style answers
+- clinically weighted scoring
