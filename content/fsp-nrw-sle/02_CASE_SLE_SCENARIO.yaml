@@ -1,0 +1,260 @@
+metadata:
+  id: fsp-nrw-sle
+  version: 0.1.0
+  title_de: "FSP-Trainingsfall: Systemischer Lupus erythematodes"
+  content_status: UNVERIFIED_FROM_PDF
+  medical_verification: PENDING_DEEPSEARCH_AND_PHYSICIAN_REVIEW
+  official_approval: false
+  jurisdiction_label_de: "NRW / Düsseldorf Fachsprachprüfungstraining – Ärztekammer-Nordrhein-Kontext; Approbationsweg über ZAG Münster"
+  source_seed: "SLE PAKTIN korrigiert.pdf (im Ausführungskontext nicht als verifizierte Quelle verfügbar)"
+
+patient:
+  display_name: "Frau S."
+  sex_de: "weiblich"
+  age_years: 58
+  occupation_de: "Sozialpädagogin an einer Grundschule"
+  family_status_de: "verheiratet, zwei Kinder"
+  emotional_state_de: "besorgt, erschöpft, kooperativ"
+  language_style_de: "alltagssprachlich, kurze Antworten, keine medizinische Fachsprache"
+  source_status: UNVERIFIED_FROM_PDF
+
+opening:
+  statement_de: "Ich bin ständig müde und meine Gelenke tun immer wieder weh."
+  source_status: UNVERIFIED_FROM_PDF
+
+facts:
+  - id: chief_fatigue
+    category: chief_complaint
+    visibility: opening
+    allowed_phases: [patient_opening, anamnesis_active, patient_questions]
+    trigger_keywords: ["müde", "mued", "erschöpft", "erschoepft", "schwäche", "schwaeche", "hauptbeschwerde", "beschwerden"]
+    answer_de: "Ich bin seit einiger Zeit ungewöhnlich müde und schnell erschöpft."
+    checklist_item: chief_complaint
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: timeline_weeks
+    category: timeline
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["seit wann", "wie lange", "beginn", "angefangen", "dauer"]
+    answer_de: "Das geht seit mehreren Wochen so und ist in letzter Zeit deutlicher geworden."
+    checklist_item: symptom_timeline
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: joint_pain_pattern
+    category: musculoskeletal
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["gelenk", "gelenke", "gelenkschmerz", "hände", "haende", "knie", "beidseitig", "bewegung"]
+    answer_de: "Vor allem meine Hände und Knie tun weh, meistens auf beiden Seiten und schubweise."
+    checklist_item: joint_pain
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: butterfly_rash
+    category: skin
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["ausschlag", "haut", "rötung", "roetung", "gesicht", "wangen", "nase", "schmetterling"]
+    answer_de: "Manchmal bekomme ich eine auffällige Rötung über den Wangen und der Nase."
+    checklist_item: skin_symptoms
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: photosensitivity
+    category: skin
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["sonne", "licht", "uv", "photosens", "sonnenlicht", "lichtempfindlich"]
+    answer_de: "Nach Sonne wird die Hautrötung oft schlimmer, deshalb meide ich starkes Sonnenlicht."
+    checklist_item: photosensitivity
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: intermittent_fever
+    category: constitutional
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["fieber", "temperatur", "schüttelfrost", "schuettelfrost"]
+    answer_de: "Ich hatte zwischendurch erhöhte Temperatur, aber ich habe nicht jedes Mal nachgemessen."
+    checklist_item: fever
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: night_sweats
+    category: constitutional
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["nachtschweiß", "nachtschweiss", "schwitzen", "nacht"]
+    answer_de: "Ja, ich wache manchmal nachts verschwitzt auf."
+    checklist_item: night_sweats
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: weight_loss
+    category: constitutional
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["abgenommen", "gewichtsverlust", "gewicht verloren", "gewicht", "kilo"]
+    answer_de: "Ich habe ungefähr drei Kilo in den letzten ein bis zwei Monaten abgenommen, ohne es zu wollen."
+    checklist_item: weight_loss
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: sleep_disturbance
+    category: vegetative
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["schlaf", "schlafen", "durchschlafen", "einschlafen"]
+    answer_de: "Wegen der Beschwerden schlafe ich unruhig und wache öfter auf."
+    checklist_item: sleep
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: medication_diclofenac
+    category: medication
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["medikament", "tablette", "voltaren", "diclofenac", "schmerzmittel", "nehmen sie"]
+    answer_de: "Bei stärkeren Schmerzen nehme ich manchmal Diclofenac. Die genaue Dosierung weiß ich gerade nicht."
+    checklist_item: medication
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: medication_pantoprazole
+    category: medication
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["pantoprazol", "magenschutz", "magenmedikament"]
+    answer_de: "Dazu nehme ich Pantoprazol als Magenschutz."
+    checklist_item: medication
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: allergies_none_known
+    category: allergies
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["allergie", "allergien", "unverträg", "unvertraeg"]
+    answer_de: "Mir sind keine Allergien bekannt."
+    checklist_item: allergies
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: operations_none
+    category: past_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["operation", "operiert", "eingriff", "krankenhaus früher", "krankenhaus frueher"]
+    answer_de: "Ich wurde bisher nicht operiert."
+    checklist_item: past_medical_history
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: smoking_none
+    category: social_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["rauch", "zigarette", "nikotin"]
+    answer_de: "Nein, ich rauche nicht."
+    checklist_item: smoking
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: alcohol_occasional
+    category: social_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["alkohol", "wein", "bier"]
+    answer_de: "Gelegentlich trinke ich ein Glas Wein, aber nicht regelmäßig."
+    checklist_item: alcohol
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: drugs_none
+    category: social_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["droge", "drogen", "substanz"]
+    answer_de: "Nein, ich nehme keine Drogen."
+    checklist_item: drugs
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: occupation
+    category: social_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["beruf", "arbeiten", "arbeit", "tätig", "taetig"]
+    answer_de: "Ich arbeite als Sozialpädagogin an einer Grundschule."
+    checklist_item: occupation
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: family_status
+    category: social_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["verheiratet", "familie", "kinder", "allein", "wohnen"]
+    answer_de: "Ich bin verheiratet und habe zwei Kinder."
+    checklist_item: family_status
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: family_history_uncertain
+    category: family_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["familienanamnese", "familie krank", "mutter", "vater", "schwester", "erblich"]
+    answer_de: "Meine Mutter hatte etwas Rheumatisches, und meine Schwester hat eine Hautkrankheit. Genauer weiß ich es leider nicht."
+    checklist_item: family_history
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: gynecology_not_verified
+    category: gynecology
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["menstruation", "regelblutung", "periode", "wechseljahre", "gynäk", "gynaek", "pille", "schwanger"]
+    answer_de: "Dazu kann ich gerade keine sichere Angabe machen."
+    checklist_item: gynecological_history
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: red_flags_no_verified_data
+    category: organ_involvement
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["atemnot", "brustschmerz", "urin", "niere", "neurolog", "krampf", "lähmung", "laehmung", "schwellung"]
+    answer_de: "Dazu kann ich gerade keine sichere Angabe machen."
+    checklist_item: red_flags
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: lab_ana
+    category: laboratory
+    visibility: examiner_only
+    allowed_phases: [lab_call_phase, doctor_handover_phase, feedback_phase]
+    trigger_keywords: ["ana", "antinukle", "titer"]
+    answer_de: "ANA: 1:640. UNVERIFIED_FROM_PDF – vor Nutzung medizinisch prüfen."
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: lab_anti_dsdna
+    category: laboratory
+    visibility: examiner_only
+    allowed_phases: [lab_call_phase, doctor_handover_phase, feedback_phase]
+    trigger_keywords: ["anti-dsdna", "dsdna", "doppelstrang"]
+    answer_de: "Anti-dsDNA: hoch positiv. UNVERIFIED_FROM_PDF – vor Nutzung medizinisch prüfen."
+    source_status: UNVERIFIED_FROM_PDF
+
+  - id: lab_blood_count
+    category: laboratory
+    visibility: examiner_only
+    allowed_phases: [lab_call_phase, doctor_handover_phase, feedback_phase]
+    trigger_keywords: ["leukozyten", "hämoglobin", "haemoglobin", "thrombozyten", "blutbild"]
+    answer_de: "PDF-Seed: Leukozyten 3,2/nl, Hämoglobin 10,8 g/dl, Thrombozyten 120/nl. UNVERIFIED_FROM_PDF."
+    source_status: UNVERIFIED_FROM_PDF
+
+fallbacks:
+  unknown_de: "Dazu kann ich Ihnen im Moment nichts Genaueres sagen."
+  unrelated_de: "Das gehört nicht zu meinen Beschwerden."
+  lab_in_patient_phase_de: "Meine genauen Laborwerte kenne ich nicht. Das müssten Sie bitte in meinen Unterlagen nachsehen."
+  examiner_only_de: "Das weiß ich als Patientin nicht."
+  non_patient_phase_de: "Die Patientensimulation ist in dieser Phase pausiert."
+
+patient_questions:
+  - "Was könnte ich haben?"
+  - "Ist das gefährlich?"
+  - "Kann Sonne meine Beschwerden verschlechtern?"
+  - "Was passiert jetzt als Nächstes?"
+  - "Ist so etwas vererbbar?"
+  - "Muss ich ins Krankenhaus?"
+  - "Hängt das mit der Pille zusammen?"
+  - "Ist Arthrose dasselbe wie Lupus?"
+
+forbidden_patient_behaviors:
+  - "Keine Diagnose als gesicherte Tatsache behaupten."
+  - "Keine Laborwerte in der Patientenphase nennen."
+  - "Keine konkreten Therapie- oder Dosierungsempfehlungen für reale Personen geben."
+  - "Keine offizielle ÄKNo-Anerkennung behaupten."
