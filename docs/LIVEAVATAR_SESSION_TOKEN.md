@@ -1,6 +1,6 @@
 # LiveAvatar session token API (FULL Mode)
 
-**Status:** server-side session-token minting is implemented. Browser WebRTC / Push-to-Talk client wiring remains out of scope.
+**Status:** server-side session-token minting is implemented. Browser WebRTC client is at `/liveavatar` (see `docs/LIVEAVATAR_BROWSER_CLIENT.md`).
 
 Production Custom LLM: `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions`
 
@@ -23,7 +23,7 @@ LiveAvatar FULL Mode is API-driven (not a visible HeyGen website UI):
    - LiveAvatar requires a stored secret. Use `secret_type: OPENAI_API_KEY` — this is the **provider enum label for OpenAI-compatible custom endpoints**, not a route to OpenAI when `base_url` points at our Vercel backend. **No OpenAI account or key is used.**
    - Our `/v1/chat/completions` does **not** validate auth yet; the script uses a local placeholder `secret_value` unless you override `LIVEAVATAR_LLM_SECRET_VALUE`.
 3. **Session token:** `POST /v1/sessions/token` with `mode: FULL`, `avatar_id`, `llm_configuration_id`, `avatar_persona` (`language: de`, optional `voice_id`, optional `context_id`), `interactivity_type: PUSH_TO_TALK`, `max_session_duration: 1200`, `is_sandbox`.
-4. **Client (future):** `POST /v1/sessions/start` with `authorization: Bearer <session_token>` → LiveKit room.
+4. **Client:** `@heygen/liveavatar-web-sdk` in browser — token from `POST /api/integrations/heygen/session-token`, then SDK `LiveAvatarSession.start()`.
 
 FSP case content, guardrails, and hidden-fact policy stay in **`POST /v1/chat/completions`** — not in LiveAvatar context.
 
@@ -58,7 +58,9 @@ Never commit values. Never log `HEYGEN_API_KEY` or `session_token` in applicatio
 3. `POST https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions` — OpenAI shape + `x_fsp.mock`
 4. `POST /api/sessions` → copy `id`
 5. `POST /api/integrations/heygen/session-token` with `{ "fsp_session_id": "<uuid>" }` → `status: ok`, `session_token`, `provider_session_id`
-6. Open LiveAvatar session in client (future PR) with returned token
+6. Open `https://fsp-liveavatar-sle-prototype.vercel.app/liveavatar` — create FSP session, connect LiveAvatar, test Push-to-Talk
+
+**Known limitation:** production tokens currently mint **without `voice_id`** (voice binding deferred). Avatar video may work; ElevenLabs speech depends on HeyGen-side wiring until `HEYGEN_LIVEAVATAR_VOICE_ID` is re-enabled with a valid UUID.
 
 ## Local setup scripts (never commit secrets)
 

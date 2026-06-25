@@ -50,7 +50,7 @@ export function getHeyGenIntegrationStatus(): {
   custom_llm_path: "/v1/chat/completions";
   custom_llm_compat_path: "/chat/completions";
   streaming: "not_implemented";
-  push_to_talk: "client_not_implemented";
+  push_to_talk: "browser_sdk";
   env: HeyGenEnvSnapshot;
   bridge: {
     deployment_target: "vercel";
@@ -70,7 +70,7 @@ export function getHeyGenIntegrationStatus(): {
     custom_llm_path: "/v1/chat/completions",
     custom_llm_compat_path: "/chat/completions",
     streaming: "not_implemented",
-    push_to_talk: "client_not_implemented",
+    push_to_talk: "browser_sdk",
     env,
     bridge: {
       deployment_target: "vercel",

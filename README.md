@@ -15,6 +15,8 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+LiveAvatar browser slice: `http://localhost:3000/liveavatar` (requires HeyGen env on server — see `docs/LIVEAVATAR_BROWSER_CLIENT.md`).
+
 ## Validation
 
 ```bash
@@ -39,7 +41,8 @@ npm run build
 - non-streaming `POST /v1/chat/completions`
 - compatibility `POST /chat/completions`
 - German start/consent/simulation UI
-- mock avatar and text-based Push-to-Talk substitute
+- mock avatar and text-based Push-to-Talk substitute on `/simulation`
+- **LiveAvatar browser client** at `/liveavatar` (`@heygen/liveavatar-web-sdk`, server-minted token, Push-to-Talk)
 - documentation, laboratory, handover, and feedback placeholders
 - nine focused Vitest tests (opening, hidden facts, lab/classification blocking, safety, reset, OpenAI shape)
 - HeyGen FULL Mode **contract spike** (fail-closed placeholder routes; not connected)
@@ -67,15 +70,19 @@ curl -X POST http://localhost:3000/v1/chat/completions \
 
 The standard OpenAI-like fields are returned together with an `x_fsp` extension containing mock session state. Streaming is intentionally not implemented yet.
 
-## Deliberately mocked
+## Deliberately mocked or deferred
 
-- avatar video, voice, STT, TTS, and WebRTC
-- Push-to-Talk audio behavior
 - examiner/Oberarzt interaction
 - documentation persistence and scoring
 - lab-call dialogue
 - language-quality scoring
 - clinically validated feedback
+- LiveAvatar **voice_id** binding (tokens mint without voice; see `docs/LIVEAVATAR_BROWSER_CLIENT.md`)
+
+Still mocked on `/simulation` only:
+
+- avatar video on the text simulation path
+- Push-to-Talk audio behavior in the mock panel
 
 All case content uses provenance labels; physician/FSP trainer sign-off remains pending for `[REVIEW]` items.
 
