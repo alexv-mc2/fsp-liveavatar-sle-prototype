@@ -49,21 +49,27 @@ All case-seeded medical content is marked `UNVERIFIED_FROM_PDF`. The source regi
 
 The global in-memory store is suitable only for one local Node process. It survives route-bundle boundaries and development hot reloads in that process, but it is not a production persistence strategy and must not be treated as durable or multi-instance safe.
 
-## HeyGen contract spike still required
+## HeyGen contract spike (added; not connected)
+
+FULL Mode integration is **documented but not implemented**. See:
+
+- `docs/HEYGEN_INTEGRATION_CONTRACT.md`
+- `GET /api/integrations/heygen/status`
+- `POST /api/integrations/heygen/session-token` (fail-closed 503)
 
 Before connecting LiveAvatar FULL Mode, verify against exact credentials and current provider documentation:
 
-1. backend session-token contract and secret handling
+1. backend session-token contract and secret handling (`HEYGEN_API_KEY` server-only)
 2. Custom LLM URL composition (`/v1/chat/completions` versus `/chat/completions`)
-3. request metadata available for stable FSP session correlation
-4. streaming/SSE expectations and timeout behavior
+3. request metadata and `x-fsp-session-id` for stable FSP session correlation
+4. streaming/SSE expectations and timeout behavior (currently rejected)
 5. Push-to-Talk start, stop, interruption, and turn-finalization semantics
 6. transcript event ordering, duplication, and reconciliation
 7. explicit stop-session behavior
 8. provider session-event deletion and retention guarantees
 9. German STT/TTS pronunciation for the glossary
 
-`HeyGenAvatarShell.tsx` is the UI integration boundary and contains matching TODO markers. `src/integrations/heygen/contracts.ts` defines the provider-neutral adapter surface without assuming undocumented fields.
+`HeyGenAvatarShell.tsx` is the UI integration boundary and remains mock-only. `src/integrations/heygen/contracts.ts` and `src/server/integrations/heygen/*` define the provider-neutral adapter surface without assuming undocumented fields.
 
 ## DeepSearch and physician-review boundary
 

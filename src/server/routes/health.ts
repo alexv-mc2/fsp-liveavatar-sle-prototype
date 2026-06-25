@@ -1,8 +1,10 @@
 import { loadScenario } from "../fsp/scenarioLoader";
 import { PROVENANCE_LABELS, SOURCE_STATUS } from "../content/sourceRegister";
+import { getHeyGenIntegrationStatus } from "../integrations/heygen/sessionToken";
 
 export function getHealthPayload() {
   const scenario = loadScenario();
+  const heygen = getHeyGenIntegrationStatus();
   return {
     status: "ok",
     service: "fsp-liveavatar-sle-prototype",
@@ -15,6 +17,7 @@ export function getHealthPayload() {
       status: entry.status,
     })),
     heygen: "mock_not_connected",
+    heygen_integration: heygen,
     storage: "in_memory_no_raw_audio",
     timestamp: new Date().toISOString(),
   } as const;
