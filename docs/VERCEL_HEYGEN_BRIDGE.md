@@ -97,7 +97,7 @@ Required for **bridge configuration check** (status endpoint reports `configured
 - `HEYGEN_LIVEAVATAR_AVATAR_ID` (or `LIVEAVATAR_AVATAR_ID`)
 - `FSP_PUBLIC_BASE_URL` (or rely on `VERCEL_URL` on Vercel)
 
-LiveAvatar **session-token minting** and WebRTC runtime remain **not implemented** — `POST /api/integrations/heygen/session-token` returns 503 `not_configured` until a future PR verifies the provider contract.
+LiveAvatar **session-token minting** is implemented server-side — see `docs/LIVEAVATAR_SESSION_TOKEN.md`. WebRTC client / Push-to-Talk audio remain **not implemented**.
 
 ## Vercel deployment
 

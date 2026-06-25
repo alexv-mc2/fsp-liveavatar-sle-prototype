@@ -64,7 +64,7 @@ FULL Mode integration is **documented but not implemented**. See:
 
 - `docs/HEYGEN_INTEGRATION_CONTRACT.md`
 - `GET /api/integrations/heygen/status`
-- `POST /api/integrations/heygen/session-token` (fail-closed 503)
+- `POST /api/integrations/heygen/session-token` (LiveAvatar FULL Mode token minting when env configured)
 
 Before connecting LiveAvatar FULL Mode, verify against exact credentials and current provider documentation:
 

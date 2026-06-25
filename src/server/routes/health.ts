@@ -16,7 +16,9 @@ export function getHealthPayload() {
       id: entry.id,
       status: entry.status,
     })),
-    heygen: "mock_not_connected",
+    heygen: heygen.session_token_configured
+      ? "liveavatar_session_token_configured"
+      : "mock_not_connected",
     heygen_integration: heygen,
     storage: "in_memory_no_raw_audio",
     timestamp: new Date().toISOString(),

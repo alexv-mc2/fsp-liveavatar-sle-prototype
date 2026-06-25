@@ -106,6 +106,7 @@ Custom LLM target: `POST /v1/chat/completions` with header `x-fsp-session-id`.
 
 - Custom LLM contract: `docs/CUSTOM_LLM_API_CONTRACT.md`
 - Vercel deployment + HeyGen manual setup: `docs/VERCEL_HEYGEN_BRIDGE.md`
+- LiveAvatar session token API: `docs/LIVEAVATAR_SESSION_TOKEN.md`
 
 ## Privacy constraints
 
