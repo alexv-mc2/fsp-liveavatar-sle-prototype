@@ -57,6 +57,21 @@ describe("env and bridge readiness", () => {
     );
   });
 
+  it("readHeyGenEnvSnapshot prepends https:// to FSP_PUBLIC_BASE_URL without scheme", () => {
+    process.env[HEYGEN_ENV.PUBLIC_BASE_URL] = "fsp-liveavatar.example.com";
+    process.env[HEYGEN_ENV.API_KEY] = "test-key";
+    process.env[HEYGEN_ENV.LIVEAVATAR_AVATAR_ID] = "test-avatar";
+
+    const env = readHeyGenEnvSnapshot();
+
+    expect(env.publicBaseUrl).toBe("https://fsp-liveavatar.example.com");
+    expect(env.publicBaseUrlSource).toBe("FSP_PUBLIC_BASE_URL");
+    expect(env.customLlmUrl).toBe(
+      "https://fsp-liveavatar.example.com/v1/chat/completions",
+    );
+    expect(env.configured).toBe(true);
+  });
+
   it("readHeyGenEnvSnapshot uses VERCEL_URL when FSP_PUBLIC_BASE_URL is unset", () => {
     process.env.VERCEL_URL = "fsp-liveavatar-sle-prototype.vercel.app";
     process.env[HEYGEN_ENV.API_KEY] = "test-key";

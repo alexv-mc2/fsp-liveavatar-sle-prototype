@@ -55,22 +55,26 @@ function readTrimmed(name: string): string | undefined {
   return value ? value : undefined;
 }
 
+function normalizePublicBaseUrl(raw: string): string {
+  const normalized = raw.replace(/\/+$/, "");
+  return normalized.startsWith("http") ? normalized : `https://${normalized}`;
+}
+
 function resolvePublicBaseUrl(): {
   url: string | null;
   source: HeyGenEnvSnapshot["publicBaseUrlSource"];
 } {
   const explicit = readTrimmed(HEYGEN_ENV.PUBLIC_BASE_URL);
   if (explicit) {
-    return { url: explicit.replace(/\/+$/, ""), source: "FSP_PUBLIC_BASE_URL" };
+    return {
+      url: normalizePublicBaseUrl(explicit),
+      source: "FSP_PUBLIC_BASE_URL",
+    };
   }
 
   const vercel = readTrimmed("VERCEL_URL");
   if (vercel) {
-    const normalized = vercel.replace(/\/+$/, "");
-    const withScheme = normalized.startsWith("http")
-      ? normalized
-      : `https://${normalized}`;
-    return { url: withScheme, source: "VERCEL_URL" };
+    return { url: normalizePublicBaseUrl(vercel), source: "VERCEL_URL" };
   }
 
   return { url: null, source: null };

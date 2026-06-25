@@ -29,11 +29,21 @@ Set `FSP_PUBLIC_BASE_URL` in Vercel to your **stable production domain** (not a 
 
 On Vercel, `VERCEL_URL` is injected automatically; `FSP_PUBLIC_BASE_URL` overrides it when you need a fixed callback URL.
 
+## LiveAvatar Custom LLM API path (official)
+
+Custom LLM wiring for LiveAvatar FULL Mode is **not** done through a visible HeyGen website UI. The provider flow is API-driven:
+
+1. **Create a Custom LLM configuration** via the LiveAvatar **LLM Configurations API**, with the callback URL `https://<vercel-domain>/v1/chat/completions`.
+2. Store the returned **`llm_configuration_id`** (FSP/ExpoWall env name: `LIVEAVATAR_LLM_CONFIGURATION_ID`).
+3. **Create Session Token** (`POST /v1/sessions/token`) must include that `llm_configuration_id` together with `avatar_id`, `voice_id` / `context_id` (inside `avatar_persona`), `language`, `max_session_duration`, and `interactivity_type`.
+
+LiveAvatar **context** (`context_id`) is for a minimal role/opening only. **Do not** put case facts, lab values, guardrails, or DeepSearch content there — the patient brain is **`POST /v1/chat/completions`** in this backend.
+
 ## HeyGen context vs FSP context (critical)
 
-**HeyGen website “Context” must stay minimal** — e.g. a short role instruction such as “Du bist eine fiktive Patientin in einer FSP-Übung. Antworte nur auf Deutsch, kurz und patientenorientiert.”
+**LiveAvatar context must stay minimal** — e.g. a short role instruction such as “Du bist eine fiktive Patientin in einer FSP-Übung. Antworte nur auf Deutsch, kurz und patientenorientiert.”
 
-**Do not** paste case facts, lab values, guardrails, hidden-fact policy, or DeepSearch links into HeyGen Context.
+**Do not** paste case facts, lab values, guardrails, hidden-fact policy, or DeepSearch links into LiveAvatar context records.
 
 All real FSP/SLE simulation logic lives in **this backend**:
 
@@ -47,7 +57,7 @@ HeyGen provides avatar, STT/TTS, and turn transport; **our Custom LLM is the pat
 
 ## ExpoWall credential discovery (read-only)
 
-Inspected **read-only**: `/Users/worob/Desktop/NOMen_company/brAIn/mcsq-expo-wall` — **no files modified**.
+Inspected **read-only**: the local ExpoWall checkout (`mcsq-expo-wall` sibling project) — **no files modified**.
 
 ExpoWall uses `@heygen/liveavatar-web-sdk` and server routes under `/api/liveavatar/session/*`. Relevant env **names** (from `.env.example` and `src/lib/liveavatar/config.ts`):
 
@@ -57,7 +67,7 @@ ExpoWall uses `@heygen/liveavatar-web-sdk` and server routes under `/api/liveava
 | `LIVEAVATAR_AVATAR_ID` | `HEYGEN_LIVEAVATAR_AVATAR_ID` | Avatar selection |
 | `LIVEAVATAR_VOICE_ID` | `HEYGEN_LIVEAVATAR_VOICE_ID` | Optional voice override |
 | `LIVEAVATAR_CONTEXT_ID` | *(HeyGen-side only)* | Minimal HeyGen context record ID — **not** FSP case content |
-| `LIVEAVATAR_LLM_CONFIGURATION_ID` | *(HeyGen-side only)* | Points Custom LLM config in HeyGen dashboard |
+| `LIVEAVATAR_LLM_CONFIGURATION_ID` | *(LiveAvatar API only)* | ID from LiveAvatar LLM Configurations API |
 | `LIVEAVATAR_BASE_URL` | default `https://api.liveavatar.com` | API base |
 | `LIVEAVATAR_LANGUAGE` | — | Default `de` in ExpoWall |
 | `LIVEAVATAR_INTERACTIVITY_TYPE` | — | `PUSH_TO_TALK` or `CONVERSATIONAL` |
@@ -118,16 +128,17 @@ npx vercel --prod
 ## Manual HeyGen / LiveAvatar setup sequence
 
 1. **Choose avatar** — use current LiveAvatar avatar ID (same as `HEYGEN_LIVEAVATAR_AVATAR_ID` / ExpoWall `LIVEAVATAR_AVATAR_ID`).
-2. **Custom LLM URL** — set to `https://<vercel-domain>/v1/chat/completions` in HeyGen LLM configuration.
-3. **Minimal HeyGen Context** — short German patient role only; **no** case YAML, links, or lab content in HeyGen.
-4. **German patient opening** — start session; verify opening complaint matches backend (`POST /api/sessions` + first completion or HeyGen-driven turn).
-5. **Session continuity** — if HeyGen sends metadata, confirm `x-fsp-session-id` header (or body `session_id`) keeps the same FSP session across turns (`x_fsp.correlation` in response).
-6. **Patient-phase lab blocking** — ask for ANA/C3 during anamnesis; patient must refuse numeric lab values.
-7. **Real-user medical safety** — ask for diagnosis/treatment; session should exit safely per guardrails.
-8. **Push-to-Talk** — verify turn boundaries and interruption behavior on HeyGen side (backend PTT audio **not implemented** here).
-9. **Transcript events** — compare HeyGen transcript with `x_fsp.session.transcriptTurns` during mock/spike.
-10. **Stop session** — explicit stop on both client and provider; confirm no orphaned sessions.
-11. **Provider deletion/retention** — document HeyGen data retention and deletion guarantees for production compliance.
+2. **Create Custom LLM via API** — call LiveAvatar LLM Configurations API with URL `https://<vercel-domain>/v1/chat/completions`; save `llm_configuration_id`. *(Not available as a visible HeyGen website setting.)*
+3. **Minimal LiveAvatar context** — `context_id` carries short German patient role/opening only; **no** case YAML, links, or lab content. Full FSP logic stays in `/v1/chat/completions`.
+4. **Mint session token** — `POST /v1/sessions/token` with `llm_configuration_id`, `avatar_id`, persona `context_id`/`voice_id`, `language`, `max_session_duration`, `interactivity_type`.
+5. **German patient opening** — start session; verify opening complaint matches backend (`POST /api/sessions` + first completion or HeyGen-driven turn).
+6. **Session continuity** — if HeyGen sends metadata, confirm `x-fsp-session-id` header (or body `session_id`) keeps the same FSP session across turns (`x_fsp.correlation` in response).
+7. **Patient-phase lab blocking** — ask for ANA/C3 during anamnesis; patient must refuse numeric lab values.
+8. **Real-user medical safety** — ask for diagnosis/treatment; session should exit safely per guardrails.
+9. **Push-to-Talk** — verify turn boundaries and interruption behavior on HeyGen side (backend PTT audio **not implemented** here).
+10. **Transcript events** — compare HeyGen transcript with `x_fsp.session.transcriptTurns` during mock/spike.
+11. **Stop session** — explicit stop on both client and provider; confirm no orphaned sessions.
+12. **Provider deletion/retention** — document HeyGen data retention and deletion guarantees for production compliance.
 
 ## What remains mocked / manual
 
