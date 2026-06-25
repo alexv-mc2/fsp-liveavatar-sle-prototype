@@ -5,6 +5,7 @@ import {
   MissingUserMessageError,
   UnsupportedStreamingError,
 } from "./chatCompletions";
+import { HeyGenNotConfiguredError } from "../integrations/heygen/errors";
 
 export interface HttpErrorPayload {
   status: number;
@@ -14,6 +15,7 @@ export interface HttpErrorPayload {
       type: string;
       code: string;
       details?: unknown;
+      missing_env?: string[];
     };
   };
 }
@@ -80,6 +82,20 @@ export function toHttpError(error: unknown): HttpErrorPayload {
           message: error.message,
           type: "invalid_request_error",
           code: "missing_user_message",
+        },
+      },
+    };
+  }
+
+  if (error instanceof HeyGenNotConfiguredError) {
+    return {
+      status: 503,
+      body: {
+        error: {
+          message: error.message,
+          type: "integration_error",
+          code: "not_configured",
+          missing_env: error.missingEnv,
         },
       },
     };

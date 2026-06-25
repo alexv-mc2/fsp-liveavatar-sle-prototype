@@ -42,6 +42,7 @@ npm run build
 - mock avatar and text-based Push-to-Talk substitute
 - documentation, laboratory, handover, and feedback placeholders
 - nine focused Vitest tests (opening, hidden facts, lab/classification blocking, safety, reset, OpenAI shape)
+- HeyGen FULL Mode **contract spike** (fail-closed placeholder routes; not connected)
 
 ## API examples
 
@@ -75,13 +76,30 @@ The standard OpenAI-like fields are returned together with an `x_fsp` extension 
 - language-quality scoring
 - clinically validated feedback
 
-## Waiting for DeepSearch and physician review
+All case content uses provenance labels; physician/FSP trainer sign-off remains pending for `[REVIEW]` items.
 
-All disease-specific facts, laboratory values, diagnostic wording, differential diagnoses, treatment details, and clinical scoring weights remain unverified from the PDF seed, which is not treated as an authoritative source.
+## HeyGen integration (contract spike only)
 
-## Waiting for the HeyGen contract spike
+**HeyGen is not connected.** The app uses a mock avatar and text Push-to-Talk substitute.
 
-FULL Mode token creation, Custom LLM request metadata, exact URL composition, streaming, PTT semantics, transcript events, stop-session behavior, and provider-side event deletion. See `docs/ARCHITECTURE.md` and `src/components/HeyGenAvatarShell.tsx`.
+Contract documentation: `docs/HEYGEN_INTEGRATION_CONTRACT.md`
+
+Placeholder endpoints (fail-closed without credentials):
+
+```bash
+curl http://localhost:3000/api/integrations/heygen/status
+curl -X POST http://localhost:3000/api/integrations/heygen/session-token \
+  -H 'content-type: application/json' \
+  -d '{"fsp_session_id":"SESSION_UUID"}'
+```
+
+Future local spike requires server env vars only (never commit values):
+
+- `HEYGEN_API_KEY`
+- `HEYGEN_LIVEAVATAR_AVATAR_ID`
+- `FSP_PUBLIC_BASE_URL` (HTTPS URL HeyGen uses for Custom LLM callbacks)
+
+Custom LLM target: `POST /v1/chat/completions` with header `x-fsp-session-id`.
 
 ## Privacy constraints
 
