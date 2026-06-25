@@ -16,8 +16,15 @@
  *   LIVEAVATAR_BASE_URL (default https://api.liveavatar.com)
  *   LIVEAVATAR_LLM_DISPLAY_NAME (default FSP SLE Custom LLM)
  *   LIVEAVATAR_LLM_MODEL_NAME (default fsp-sle-deterministic-mock-v0)
- *   LIVEAVATAR_LLM_SECRET_VALUE (default placeholder-not-used — verify with provider if rejected)
+ *   LIVEAVATAR_LLM_SECRET_TYPE (default OPENAI_API_KEY — provider label for OpenAI-compatible custom endpoints; does NOT route to OpenAI when base_url is our Vercel backend)
+ *   LIVEAVATAR_LLM_SECRET_VALUE (default fsp-custom-llm-no-auth — our /v1/chat/completions does not require auth yet; LiveAvatar may still store/send a bearer value)
  */
+
+const ALLOWED_SECRET_TYPES = new Set([
+  "OPENAI_API_KEY",
+  "ELEVENLABS_API_KEY",
+  "GEMINI_API_KEY",
+]);
 
 const apiKey = process.env.LIVEAVATAR_API_KEY?.trim() || process.env.HEYGEN_API_KEY?.trim();
 const publicBase =
@@ -27,7 +34,9 @@ const publicBase =
 const baseUrl = (process.env.LIVEAVATAR_BASE_URL ?? "https://api.liveavatar.com").replace(/\/+$/, "");
 const displayName = process.env.LIVEAVATAR_LLM_DISPLAY_NAME?.trim() ?? "FSP SLE Custom LLM";
 const modelName = process.env.LIVEAVATAR_LLM_MODEL_NAME?.trim() ?? "fsp-sle-deterministic-mock-v0";
-const secretValue = process.env.LIVEAVATAR_LLM_SECRET_VALUE?.trim() ?? "placeholder-not-used";
+const secretType = process.env.LIVEAVATAR_LLM_SECRET_TYPE?.trim() ?? "OPENAI_API_KEY";
+const secretValue =
+  process.env.LIVEAVATAR_LLM_SECRET_VALUE?.trim() ?? "fsp-custom-llm-no-auth";
 
 function normalizePublicBaseUrl(raw) {
   const normalized = raw.replace(/\/+$/, "");
@@ -62,14 +71,24 @@ if (!apiKey) {
   process.exit(1);
 }
 
+if (!ALLOWED_SECRET_TYPES.has(secretType)) {
+  console.error(
+    `Invalid LIVEAVATAR_LLM_SECRET_TYPE. Allowed: ${[...ALLOWED_SECRET_TYPES].join(", ")}`,
+  );
+  process.exit(1);
+}
+
 const llmBaseUrl = buildLlmConfigBaseUrl(publicBase);
 
 console.log(`Using LLM base_url: ${llmBaseUrl} (LiveAvatar will call ${llmBaseUrl}/chat/completions)`);
+console.log(
+  `Using secret_type label: ${secretType} (OpenAI-compatible custom backend only; not routing to OpenAI)`,
+);
 
 const secretPayload = await postJson("/v1/secrets", {
-  secret_type: "LLM_API_KEY",
+  secret_type: secretType,
   secret_value: secretValue,
-  secret_name: "FSP SLE Custom LLM placeholder",
+  secret_name: "FSP SLE Custom LLM (Vercel backend)",
 });
 
 const secretId = secretPayload?.data?.id ?? secretPayload?.data?.secret_id;

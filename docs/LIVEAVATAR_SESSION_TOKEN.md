@@ -10,8 +10,9 @@ LiveAvatar FULL Mode is API-driven (not a visible HeyGen website UI):
 
 1. **Optional:** `POST /v1/contexts` — minimal German patient role/opening only (`scripts/liveavatar-create-context.mjs`).
 2. **Required for Custom LLM:** `POST /v1/secrets` then `POST /v1/llm-configurations` — `scripts/liveavatar-create-llm-config.mjs`.
-   - `base_url` must be the origin **before** `/chat/completions`. For this app use `https://fsp-liveavatar-sle-prototype.vercel.app/v1` so LiveAvatar calls `/v1/chat/completions`.
-   - `secret_id` is required by the provider even when our endpoint has no auth; use a placeholder secret value if needed.
+   - `base_url` must be `https://fsp-liveavatar-sle-prototype.vercel.app/v1` (LiveAvatar calls `/v1/chat/completions`).
+   - LiveAvatar requires a stored secret. Use `secret_type: OPENAI_API_KEY` — this is the **provider enum label for OpenAI-compatible custom endpoints**, not a route to OpenAI when `base_url` points at our Vercel backend. **No OpenAI account or key is used.**
+   - Our `/v1/chat/completions` does **not** validate auth yet; the script uses a local placeholder `secret_value` unless you override `LIVEAVATAR_LLM_SECRET_VALUE`.
 3. **Session token:** `POST /v1/sessions/token` with `mode: FULL`, `avatar_id`, `llm_configuration_id`, `avatar_persona` (`context_id`, `voice_id`, `language: de`), `interactivity_type: PUSH_TO_TALK`, `max_session_duration: 1200`, `is_sandbox`.
 4. **Client (future):** `POST /v1/sessions/start` with `authorization: Bearer <session_token>` → LiveKit room.
 
