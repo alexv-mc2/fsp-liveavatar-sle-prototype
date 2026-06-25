@@ -94,13 +94,18 @@ curl -X POST http://localhost:3000/api/integrations/heygen/session-token \
   -d '{"fsp_session_id":"SESSION_UUID"}'
 ```
 
-Future local spike requires server env vars only (never commit values):
+Environment variable names (placeholders in `.env.example`; never commit values):
 
-- `HEYGEN_API_KEY`
-- `HEYGEN_LIVEAVATAR_AVATAR_ID`
-- `FSP_PUBLIC_BASE_URL` (HTTPS URL HeyGen uses for Custom LLM callbacks)
+- `HEYGEN_API_KEY` (local fallback: ExpoWall `LIVEAVATAR_API_KEY`)
+- `HEYGEN_LIVEAVATAR_AVATAR_ID` (fallback: `LIVEAVATAR_AVATAR_ID`)
+- `FSP_PUBLIC_BASE_URL` (HTTPS base HeyGen uses for Custom LLM; on Vercel, `VERCEL_URL` is a fallback)
 
-Custom LLM target: `POST /v1/chat/completions` with header `x-fsp-session-id`. Full contract: `docs/CUSTOM_LLM_API_CONTRACT.md`.
+Custom LLM target: `POST /v1/chat/completions` with header `x-fsp-session-id`.
+
+**Production (Vercel):** `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions`
+
+- Custom LLM contract: `docs/CUSTOM_LLM_API_CONTRACT.md`
+- Vercel deployment + HeyGen manual setup: `docs/VERCEL_HEYGEN_BRIDGE.md`
 
 ## Privacy constraints
 
