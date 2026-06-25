@@ -147,6 +147,23 @@ describe("LiveAvatar session token minting", () => {
     expect(fetchFn).toHaveBeenCalledOnce();
   });
 
+  it("normalizes provider 4xx failures to 502 without leaking provider message", async () => {
+    setConfiguredLiveAvatarEnv(false);
+    const runtime = readLiveAvatarRuntimeConfig()!;
+
+    const fetchFn = vi.fn(async () =>
+      Response.json(
+        { message: "Invalid API key secret-value-leak" },
+        { status: 401 },
+      ),
+    );
+
+    await expect(mintLiveAvatarSessionToken(runtime, fetchFn)).rejects.toMatchObject({
+      status: 502,
+      message: "LiveAvatar session token request failed.",
+    });
+  });
+
   it("createHeyGenSessionToken returns ok payload with mocked provider", async () => {
     setConfiguredLiveAvatarEnv(false);
     const fspSession = sessionStore.create(scenario);

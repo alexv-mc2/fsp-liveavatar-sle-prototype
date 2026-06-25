@@ -69,17 +69,9 @@ async function parseLiveAvatarResponse<T>(
     | null;
 
   if (!response.ok) {
-    const detail =
-      payload &&
-      typeof payload === "object" &&
-      "message" in payload &&
-      typeof payload.message === "string"
-        ? payload.message
-        : null;
-
     throw new LiveAvatarApiError(
-      detail ?? `LiveAvatar API request failed (${response.status}).`,
-      response.status >= 500 ? 502 : response.status,
+      "LiveAvatar session token request failed.",
+      502,
     );
   }
 
