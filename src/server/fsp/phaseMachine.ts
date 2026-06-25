@@ -56,7 +56,7 @@ export function transitionPhase(
     store.appendTurn(
       session,
       "system",
-      "Laborphase (Text-Platzhalter): Werte sind weiterhin als UNVERIFIED_FROM_PDF gekennzeichnet.",
+      "Laborphase: fiktionale Befunde mit Provenienzlabels ([PROTOTYPE]/[VERIFIED]); Klassifikation ≠ Diagnose.",
       "phase_machine",
     );
   }

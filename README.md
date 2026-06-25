@@ -28,7 +28,7 @@ npm run build
 
 - Next.js App Router + TypeScript
 - content-first one-case package under `content/fsp-nrw-sle/`
-- Zod-validated YAML scenario marked `UNVERIFIED_FROM_PDF`
+- Zod-validated YAML scenario (`RECONCILED_V1`) with provenance labels `[PDF]`, `[VERIFIED]`, `[PROTOTYPE]`, `[INFERENCE]`, `[REVIEW]`
 - in-memory sessions and transcript turns
 - deterministic hidden-fact release policy
 - basic phase machine
@@ -41,7 +41,7 @@ npm run build
 - German start/consent/simulation UI
 - mock avatar and text-based Push-to-Talk substitute
 - documentation, laboratory, handover, and feedback placeholders
-- five focused Vitest tests
+- nine focused Vitest tests (opening, hidden facts, lab/classification blocking, safety, reset, OpenAI shape)
 
 ## API examples
 

@@ -345,6 +345,12 @@ h3 {
   background: var(--warning-bg);
 }
 
+.status-reconciled {
+  border-color: #b8d4e8;
+  color: #1a5f8a;
+  background: #eef6fc;
+}
+
 .phase-indicator {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

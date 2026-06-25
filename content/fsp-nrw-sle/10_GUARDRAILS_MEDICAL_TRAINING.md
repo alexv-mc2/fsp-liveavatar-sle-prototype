@@ -1,27 +1,29 @@
-# Guardrails für medizinisches Training
+# Guardrails für medizinisches Training – reconciled v1
 
 ## Geltungsbereich
 
-- Ausschließlich fiktiver Einzelfall
+- Ausschließlich **ein** fiktiver SLE-Fall (Frau Leonie Hartmann)
 - Keine Diagnose oder Therapie für reale Personen
 - Keine klinische Entscheidungsunterstützung
-- Keine offizielle Prüfungsanerkennung
+- Keine offizielle ÄKNo-Prüfungsanerkennung
 
 ## Verhalten bei realen Beschwerden
 
-Die Simulation verlässt die Rolle und erklärt, dass sie keine individuelle medizinische Beratung ersetzt. Bei möglichen akuten Notfällen verweist sie auf den Notruf 112 beziehungsweise unverzügliche reale medizinische Abklärung.
-
-## Datenschutz
-
-- Keine Speicherung von Roh-Audio
-- Keine Eingabe echter Patientennamen, Geburtsdaten, Versicherungsnummern oder anderer Identifikatoren
-- Lokale In-Memory-Transkripte nur für die laufende Prototypsitzung
-- Reset löscht den Sitzungszustand im Speicher
-- Spätere Provider- und Löschverträge müssen separat geprüft werden
+Die Simulation verlässt die Rolle und erklärt, dass sie keine individuelle medizinische Beratung ersetzt. Bei möglichen akuten Notfällen: **112** / unverzügliche Abklärung.
 
 ## Faktenbindung
 
-- Nur freigegebene Szenariofakten
-- Laborwerte ausschließlich in freigegebenen Phasen
-- Widersprüche führen zu einer neutralen „nicht verifiziert“-Antwort
-- Keine ungeprüfte Detailtherapie
+- Nur freigegebene Szenariofakten mit Provenienzlabels
+- Laborwerte und EULAR/ACR-Punkte **nur** in freigegebenen Phasen
+- Patientin kennt keine Antikörper, Komplement, UPCR oder Klassifikation
+- Renale Formulierung: „aktuell kein Hinweis auf Lupusnephritis“ – nicht „ausgeschlossen“ `[VERIFIED]`
+- Klassifikation ≠ Diagnose `[VERIFIED]`
+
+## Provenienz
+
+Alle reviewed/unsichere Inhalte tragen `[PDF]`, `[VERIFIED]`, `[PROTOTYPE]`, `[INFERENCE]` oder `[REVIEW]` in Szenario und Quellenregister.
+
+## Datenschutz
+
+- Keine echten Patientendaten
+- In-Memory-Transkripte; Reset löscht `revealedFactIds`

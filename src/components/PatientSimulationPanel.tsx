@@ -28,7 +28,7 @@ export function PatientSimulationPanel({
           <p className="section-kicker">Arzt-Patienten-Gespräch</p>
           <h2 id="patient-panel-title">Mock-Patientin</h2>
         </div>
-        <span className="status-pill status-unverified">UNVERIFIED_FROM_PDF</span>
+        <span className="status-pill status-reconciled">RECONCILED_V1</span>
       </div>
       <HeyGenAvatarShell speaking={busy} />
       <PushToTalkMock disabled={!chatEnabled} busy={busy} onSend={onSend} />

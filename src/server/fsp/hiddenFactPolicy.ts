@@ -69,10 +69,18 @@ export function resolveHiddenFacts(
 
   if (allowed.length === 0) {
     const asksForLab = blocked.some((entry) => entry.fact.category === "laboratory");
+    const asksForClassification = blocked.some(
+      (entry) =>
+        entry.fact.category === "classification" ||
+        entry.fact.id === "classification_eular_acr",
+    );
     return {
-      responseDe: asksForLab
-        ? scenario.fallbacks.lab_in_patient_phase_de
-        : scenario.fallbacks.examiner_only_de,
+      responseDe: asksForClassification
+        ? (scenario.fallbacks.classification_in_patient_phase_de ??
+            scenario.fallbacks.lab_in_patient_phase_de)
+        : asksForLab
+          ? scenario.fallbacks.lab_in_patient_phase_de
+          : scenario.fallbacks.examiner_only_de,
       revealedFactIds: [],
       blockedFactIds: blocked.map((entry) => entry.fact.id),
       matchedKeywords: blocked.map((entry) => entry.keyword),

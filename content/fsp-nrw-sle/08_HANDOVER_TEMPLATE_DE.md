@@ -1,22 +1,29 @@
-# Vorlage Arzt-Arzt-Übergabe
+# Vorlage Arzt-Arzt-Übergabe – Leonie Hartmann
 
-**Trainingsstruktur – keine offizielle Bewertungsmatrix.**
+**Status:** `[PROTOTYPE][REVIEW]`
 
-1. Identifikation der Patientin
-2. Aufnahmegrund und Hauptbeschwerden
-3. Zeitlicher Verlauf
-4. Relevante positive Befunde
-5. Relevante negative Befunde
-6. Vorerkrankungen, Medikamente, Allergien
-7. Sozial- und Familienanamnese
-8. Verdachtsdiagnose als Verdacht formulieren
-9. Wichtige Differenzialdiagnosen
-10. Labor/Befunde nur aus der freigegebenen Phase
-11. Weitere Diagnostik auf hoher Ebene
-12. Weiteres Vorgehen ohne ungeprüfte Detailtherapie
+## Struktur
 
-Beispielanfang:
+1. Identifikation (Name, Alter, Vorstellungsgrund)
+2. Leitsymptome und zeitlicher Verlauf
+3. Relevante positive und negative Anamnese
+4. Klinische und laborchemische Befunde (nur freigegebene Phase)
+5. Beurteilung mit Unsicherheit: **dringender Verdacht**, nicht gesichert
+6. Renaler Status: **aktuell kein Hinweis auf Lupusnephritis** `[VERIFIED]`
+7. Differenzialdiagnosen
+8. Plan, Dringlichkeit, Sicherheitsnetz
 
-> „Ich möchte Ihnen Frau S., eine 58-jährige Patientin, vorstellen, die sich wegen seit mehreren Wochen bestehender Müdigkeit und rezidivierender Gelenkbeschwerden vorstellte.“
+## Modellanfang
 
-<!-- TODO(DEEPSEARCH + PHYSICIAN_REVIEW): Replace disease-specific sample handover with verified version. -->
+> „Frau Oberärztin, ich möchte Ihnen Frau Leonie Hartmann, 29 Jahre, vorstellen. Die bislang bis auf eine Appendektomie gesunde Patientin wurde wegen seit sechs Wochen bestehender symmetrischer Schmerzen und einer 60- bis 90-minütigen Morgensteifigkeit der MCP-, PIP- und Handgelenke zugewiesen …“
+
+Vollständiges Modell: DeepSearch Report Abschnitt I2 / `research/source-inputs/SLE_FSP_DeepSearch_Report_NRW_Duesseldorf.md`
+
+## Fehlermodi
+
+| Fehler | Korrektur |
+|---|---|
+| „Die Patientin hat Lupus.“ | „Dringender Verdacht; Diagnose muss verifiziert werden.“ |
+| Normale Kreatininwerte = Nephritis ausgeschlossen | Urin/UPCR/Sediment nennen; „aktuell kein Hinweis“ `[VERIFIED]` |
+| ANA als Diagnosebeweis | Screeningmarker, nicht spezifisch genug `[VERIFIED]` |
+| 31 EULAR-Punkte (Anti-Sm + Anti-dsDNA) | Nur 6 in Antikörperdomäne `[VERIFIED]` |
