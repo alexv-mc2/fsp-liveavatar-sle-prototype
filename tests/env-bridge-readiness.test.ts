@@ -37,6 +37,8 @@ function clearBridgeEnv() {
     HEYGEN_ENV.API_KEY,
     HEYGEN_ENV.LIVEAVATAR_AVATAR_ID,
     HEYGEN_ENV.LIVEAVATAR_VOICE_ID,
+    HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID,
+    HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID,
     HEYGEN_ENV.PUBLIC_BASE_URL,
     ...Object.values(EXPO_WALL_LIVEAVATAR_ENV),
     "VERCEL_URL",
@@ -61,6 +63,8 @@ describe("env and bridge readiness", () => {
     process.env[HEYGEN_ENV.PUBLIC_BASE_URL] = "fsp-liveavatar.example.com";
     process.env[HEYGEN_ENV.API_KEY] = "test-key";
     process.env[HEYGEN_ENV.LIVEAVATAR_AVATAR_ID] = "test-avatar";
+    process.env[HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID] = "test-context";
+    process.env[HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID] = "test-llm";
 
     const env = readHeyGenEnvSnapshot();
 
@@ -70,12 +74,15 @@ describe("env and bridge readiness", () => {
       "https://fsp-liveavatar.example.com/v1/chat/completions",
     );
     expect(env.configured).toBe(true);
+    expect(env.sessionTokenConfigured).toBe(true);
   });
 
   it("readHeyGenEnvSnapshot uses VERCEL_URL when FSP_PUBLIC_BASE_URL is unset", () => {
     process.env.VERCEL_URL = "fsp-liveavatar-sle-prototype.vercel.app";
     process.env[HEYGEN_ENV.API_KEY] = "test-key";
     process.env[HEYGEN_ENV.LIVEAVATAR_AVATAR_ID] = "test-avatar";
+    process.env[HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID] = "test-context";
+    process.env[HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID] = "test-llm";
 
     const env = readHeyGenEnvSnapshot();
 
@@ -84,12 +91,14 @@ describe("env and bridge readiness", () => {
     expect(env.customLlmUrl).toBe(
       "https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions",
     );
-    expect(env.configured).toBe(true);
+    expect(env.sessionTokenConfigured).toBe(true);
   });
 
   it("readHeyGenEnvSnapshot accepts ExpoWall LIVEAVATAR_* aliases without exposing values", () => {
     process.env[EXPO_WALL_LIVEAVATAR_ENV.API_KEY] = "alias-key";
     process.env[EXPO_WALL_LIVEAVATAR_ENV.AVATAR_ID] = "alias-avatar";
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.CONTEXT_ID] = "alias-context";
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.LLM_CONFIGURATION_ID] = "alias-llm";
     process.env[HEYGEN_ENV.PUBLIC_BASE_URL] = "https://bridge.example.com";
 
     const env = readHeyGenEnvSnapshot();
@@ -115,7 +124,7 @@ describe("env and bridge readiness", () => {
       "https://prod.example.com/v1/chat/completions",
     );
     expect(status.bridge.session_persistence).toBe("in_memory_deferred_supabase");
-    expect(status.bridge.liveavatar_runtime).toBe("not_implemented");
+    expect(status.bridge.liveavatar_runtime).toBe("session_token_api");
     expect(status.connected).toBe(false);
   });
 });

@@ -58,15 +58,16 @@ The global in-memory store is suitable only for one local Node process. It survi
 
 HeyGen-side Context must stay minimal (role instruction only); FSP case content, guardrails, and hidden-fact policy live in this backend (`content/fsp-nrw-sle/` and server routes).
 
-## HeyGen contract spike (added; not connected)
+## LiveAvatar integration (server token API wired; client not connected)
 
-FULL Mode integration is **documented but not implemented**. See:
+Server-side FULL Mode session-token minting is **implemented** when env is configured. Browser WebRTC / SDK client wiring remains out of scope. See:
 
+- `docs/LIVEAVATAR_SESSION_TOKEN.md`
 - `docs/HEYGEN_INTEGRATION_CONTRACT.md`
 - `GET /api/integrations/heygen/status`
-- `POST /api/integrations/heygen/session-token` (fail-closed 503)
+- `POST /api/integrations/heygen/session-token` (LiveAvatar FULL Mode token minting when env configured)
 
-Before connecting LiveAvatar FULL Mode, verify against exact credentials and current provider documentation:
+Remaining verification before production LiveAvatar sessions:
 
 1. backend session-token contract and secret handling (`HEYGEN_API_KEY` server-only)
 2. Custom LLM URL composition (`/v1/chat/completions` versus `/chat/completions`)

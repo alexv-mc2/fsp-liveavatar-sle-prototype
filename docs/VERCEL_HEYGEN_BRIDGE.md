@@ -97,7 +97,7 @@ Required for **bridge configuration check** (status endpoint reports `configured
 - `HEYGEN_LIVEAVATAR_AVATAR_ID` (or `LIVEAVATAR_AVATAR_ID`)
 - `FSP_PUBLIC_BASE_URL` (or rely on `VERCEL_URL` on Vercel)
 
-LiveAvatar **session-token minting** and WebRTC runtime remain **not implemented** — `POST /api/integrations/heygen/session-token` returns 503 `not_configured` until a future PR verifies the provider contract.
+LiveAvatar **session-token minting** is implemented server-side — see `docs/LIVEAVATAR_SESSION_TOKEN.md`. WebRTC client / Push-to-Talk audio remain **not implemented**.
 
 ## Vercel deployment
 
@@ -152,7 +152,7 @@ npx vercel --prod
 | --- | --- |
 | Custom LLM patient logic | Mock deterministic keyword simulation |
 | Avatar video / WebRTC | Mock UI only |
-| HeyGen session token API | Fail-closed 503 |
+| HeyGen session token API | Implemented server-side; 503 when env missing |
 | Push-to-Talk audio | Text substitute only |
 | Streaming (`stream: true`) | Rejected 400 |
 | Session persistence | In-memory single process |
@@ -179,4 +179,4 @@ curl http://localhost:3000/api/integrations/heygen/status
 1. Deploy stable Vercel production URL — **done:** `https://fsp-liveavatar-sle-prototype.vercel.app`. Wire LiveAvatar Custom LLM (next slice).
 2. Run manual HeyGen checklist above.
 3. Add Supabase/Postgres for sessions, transcripts, revealed facts, feedback.
-4. Implement verified LiveAvatar session-token minting aligned with ExpoWall `POST /v1/sessions/token` pattern.
+4. Wire browser LiveAvatar SDK (WebRTC + Push-to-Talk client) using minted session tokens.
