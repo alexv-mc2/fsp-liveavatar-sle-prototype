@@ -14,6 +14,11 @@ import {
   sessionStore,
 } from "../fsp/scenarioState";
 import type { SerializedSessionState, SleScenario } from "../fsp/types";
+import {
+  EmptyUserMessageError,
+  resolveCustomLlmCorrelation,
+  type SessionIdSource,
+} from "../integrations/customLlm/correlation";
 
 const MessageContentPartSchema = z
   .object({
@@ -66,6 +71,10 @@ export interface OpenAIChatCompletionResponse {
     revealed_fact_ids: string[];
     blocked_fact_ids: string[];
     safety_flag?: string;
+    correlation: {
+      session_id_source: SessionIdSource;
+      ignored_metadata_keys: string[];
+    };
     session: SerializedSessionState;
   };
 }
@@ -101,24 +110,16 @@ function latestUserMessage(
   if (!latest) {
     throw new MissingUserMessageError();
   }
-  return contentToText(latest.content);
+  const text = contentToText(latest.content).trim();
+  if (!text) {
+    throw new EmptyUserMessageError();
+  }
+  return text;
 }
 
 function approximateTokens(text: string): number {
   const normalized = text.trim();
   return normalized ? Math.max(1, Math.ceil(normalized.length / 4)) : 0;
-}
-
-function resolveRequestedSessionId(
-  parsed: z.infer<typeof OpenAIChatCompletionRequestSchema>,
-  headerSessionId?: string,
-): string | undefined {
-  const metadataSessionId = parsed.metadata?.session_id;
-  return (
-    headerSessionId ??
-    parsed.session_id ??
-    (typeof metadataSessionId === "string" ? metadataSessionId : undefined)
-  );
 }
 
 function respondToPatientQuestionPhase(
@@ -149,12 +150,9 @@ export function processChatCompletion(
 
   const store = options.store ?? sessionStore;
   const scenario = options.scenario ?? loadScenario();
-  const requestedSessionId = resolveRequestedSessionId(
-    parsed,
-    options.headerSessionId,
-  );
-  const session = requestedSessionId
-    ? store.require(requestedSessionId)
+  const correlation = resolveCustomLlmCorrelation(parsed, options.headerSessionId);
+  const session = correlation.sessionId
+    ? store.require(correlation.sessionId)
     : store.create(scenario);
   const userText = latestUserMessage(parsed.messages);
 
@@ -236,6 +234,10 @@ export function processChatCompletion(
       revealed_fact_ids: [...session.revealedFactIds],
       blocked_fact_ids: blockedFactIds,
       safety_flag: safetyFlag,
+      correlation: {
+        session_id_source: correlation.source,
+        ignored_metadata_keys: correlation.ignoredMetadataKeys,
+      },
       session: serialized,
     },
   };

@@ -10,7 +10,8 @@ This repository contains one standalone fictional SLE case. It is not part of Ex
 Next.js frontend
   -> POST /api/sessions
   -> text-based PTT mock
-  -> POST /v1/chat/completions
+  -> POST /v1/chat/completions (Custom LLM; see docs/CUSTOM_LLM_API_CONTRACT.md)
+  -> session correlation (header / body / metadata)
   -> guardrails
   -> deterministic keyword/intent matching
   -> hidden-fact policy

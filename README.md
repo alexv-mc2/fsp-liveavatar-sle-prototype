@@ -43,6 +43,7 @@ npm run build
 - documentation, laboratory, handover, and feedback placeholders
 - nine focused Vitest tests (opening, hidden facts, lab/classification blocking, safety, reset, OpenAI shape)
 - HeyGen FULL Mode **contract spike** (fail-closed placeholder routes; not connected)
+- Custom LLM compatibility hardening (`docs/CUSTOM_LLM_API_CONTRACT.md`)
 
 ## API examples
 
@@ -99,7 +100,7 @@ Future local spike requires server env vars only (never commit values):
 - `HEYGEN_LIVEAVATAR_AVATAR_ID`
 - `FSP_PUBLIC_BASE_URL` (HTTPS URL HeyGen uses for Custom LLM callbacks)
 
-Custom LLM target: `POST /v1/chat/completions` with header `x-fsp-session-id`.
+Custom LLM target: `POST /v1/chat/completions` with header `x-fsp-session-id`. Full contract: `docs/CUSTOM_LLM_API_CONTRACT.md`.
 
 ## Privacy constraints
 

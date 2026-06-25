@@ -49,6 +49,8 @@ Implementation files:
 
 ## Custom LLM contract
 
+See **`docs/CUSTOM_LLM_API_CONTRACT.md`** for the supported request/response shape, correlation precedence, validation errors, and `x_fsp.correlation` extension.
+
 HeyGen FULL Mode should call our existing OpenAI-compatible endpoint:
 
 | Item | Value |
@@ -61,7 +63,7 @@ HeyGen FULL Mode should call our existing OpenAI-compatible endpoint:
 | Correlation body fields | `session_id`, `metadata.session_id` |
 | Response | OpenAI `chat.completion` + `x_fsp` extension (mock deterministic engine today) |
 
-The handler resolves session id in this order: header → body `session_id` → body `metadata.session_id`. If absent, a new in-memory session is created (acceptable for curl tests; **not** for production HeyGen without explicit correlation).
+The handler resolves session id in this order: header → body `session_id` → body `metadata.session_id`. Invalid UUIDs return **400**. Unknown metadata keys are ignored (see Custom LLM contract doc). If absent, a new in-memory session is created (acceptable for curl tests; **not** for production HeyGen without explicit correlation).
 
 ## Push-to-Talk assumptions (TODO)
 

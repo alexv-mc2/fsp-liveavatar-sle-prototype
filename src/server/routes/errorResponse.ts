@@ -6,6 +6,10 @@ import {
   UnsupportedStreamingError,
 } from "./chatCompletions";
 import { HeyGenNotConfiguredError } from "../integrations/heygen/errors";
+import {
+  EmptyUserMessageError,
+  InvalidSessionIdError,
+} from "../integrations/customLlm/correlation";
 
 export interface HttpErrorPayload {
   status: number;
@@ -82,6 +86,33 @@ export function toHttpError(error: unknown): HttpErrorPayload {
           message: error.message,
           type: "invalid_request_error",
           code: "missing_user_message",
+        },
+      },
+    };
+  }
+
+  if (error instanceof EmptyUserMessageError) {
+    return {
+      status: 400,
+      body: {
+        error: {
+          message: error.message,
+          type: "invalid_request_error",
+          code: "empty_user_message",
+        },
+      },
+    };
+  }
+
+  if (error instanceof InvalidSessionIdError) {
+    return {
+      status: 400,
+      body: {
+        error: {
+          message: error.message,
+          type: "invalid_request_error",
+          code: "invalid_session_id",
+          details: { field: error.field },
         },
       },
     };
