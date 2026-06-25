@@ -1,0 +1,165 @@
+# Vercel + HeyGen LiveAvatar bridge readiness
+
+This slice prepares a **public HTTPS Custom LLM endpoint** for HeyGen LiveAvatar FULL Mode while keeping HeyGen disconnected and session state **in-memory only**. Supabase/Postgres persistence is deferred until the bridge is verified.
+
+## Deployment target
+
+| Layer | Role in this slice |
+| --- | --- |
+| **Vercel** | Hosts the Next.js app and API routes (`/v1/chat/completions`, `/api/health`, placeholder HeyGen routes). Target runtime for HeyGen Custom LLM callbacks. |
+| **Supabase / Postgres** | **Not in this slice.** Next step after bridge smoke tests: durable sessions, transcripts, revealed facts, feedback. |
+| **GitHub Pages / Codespaces** | **Not used** for this app. |
+
+## Stable Custom LLM URL
+
+HeyGen must call:
+
+```text
+https://<your-vercel-domain>/v1/chat/completions
+```
+
+Compatibility alias: `POST /chat/completions` (same handler).
+
+Correlation for FSP session continuity:
+
+- Preferred header: `x-fsp-session-id`
+- Body fallbacks: `session_id`, `metadata.session_id` (see `docs/CUSTOM_LLM_API_CONTRACT.md`)
+
+Set `FSP_PUBLIC_BASE_URL` in Vercel to your **stable production domain** (not a ephemeral preview URL) before wiring HeyGen production context.
+
+On Vercel, `VERCEL_URL` is injected automatically; `FSP_PUBLIC_BASE_URL` overrides it when you need a fixed callback URL.
+
+## HeyGen context vs FSP context (critical)
+
+**HeyGen website “Context” must stay minimal** — e.g. a short role instruction such as “Du bist eine fiktive Patientin in einer FSP-Übung. Antworte nur auf Deutsch, kurz und patientenorientiert.”
+
+**Do not** paste case facts, lab values, guardrails, hidden-fact policy, or DeepSearch links into HeyGen Context.
+
+All real FSP/SLE simulation logic lives in **this backend**:
+
+- `content/fsp-nrw-sle/` scenario YAML
+- phase machine and hidden-fact release
+- patient-phase lab blocking
+- real-user medical safety exits
+- transcript and session state (currently in-memory)
+
+HeyGen provides avatar, STT/TTS, and turn transport; **our Custom LLM is the patient brain**.
+
+## ExpoWall credential discovery (read-only)
+
+Inspected **read-only**: `/Users/worob/Desktop/NOMen_company/brAIn/mcsq-expo-wall` — **no files modified**.
+
+ExpoWall uses `@heygen/liveavatar-web-sdk` and server routes under `/api/liveavatar/session/*`. Relevant env **names** (from `.env.example` and `src/lib/liveavatar/config.ts`):
+
+| ExpoWall (`LIVEAVATAR_*`) | FSP prototype (canonical) | Notes |
+| --- | --- | --- |
+| `LIVEAVATAR_API_KEY` | `HEYGEN_API_KEY` | Server-only; session token minting |
+| `LIVEAVATAR_AVATAR_ID` | `HEYGEN_LIVEAVATAR_AVATAR_ID` | Avatar selection |
+| `LIVEAVATAR_VOICE_ID` | `HEYGEN_LIVEAVATAR_VOICE_ID` | Optional voice override |
+| `LIVEAVATAR_CONTEXT_ID` | *(HeyGen-side only)* | Minimal HeyGen context record ID — **not** FSP case content |
+| `LIVEAVATAR_LLM_CONFIGURATION_ID` | *(HeyGen-side only)* | Points Custom LLM config in HeyGen dashboard |
+| `LIVEAVATAR_BASE_URL` | default `https://api.liveavatar.com` | API base |
+| `LIVEAVATAR_LANGUAGE` | — | Default `de` in ExpoWall |
+| `LIVEAVATAR_INTERACTIVITY_TYPE` | — | `PUSH_TO_TALK` or `CONVERSATIONAL` |
+| `LIVEAVATAR_SANDBOX` | — | Sandbox sessions |
+| `LIVEAVATAR_MAX_SESSION_SECONDS` | — | Session cap |
+| `NEXT_PUBLIC_ERLEBE_WALBECK_AVATAR_ENABLED` | — | ExpoWall UI gate only |
+
+Local ExpoWall `.env.local` (read-only check, **values not copied or printed**) had non-empty values for: `LIVEAVATAR_API_KEY`, `LIVEAVATAR_AVATAR_ID`, `LIVEAVATAR_VOICE_ID`, `LIVEAVATAR_CONTEXT_ID`, `LIVEAVATAR_LANGUAGE`, `LIVEAVATAR_INTERACTIVITY_TYPE`, `LIVEAVATAR_SANDBOX`, `LIVEAVATAR_MAX_SESSION_SECONDS`, `NEXT_PUBLIC_ERLEBE_WALBECK_AVATAR_ENABLED`. `LIVEAVATAR_LLM_CONFIGURATION_ID` was **not** set locally.
+
+This repo accepts `LIVEAVATAR_*` as **optional fallbacks** when running locally so you can reuse ExpoWall credentials without duplicating secrets into new variable names. On Vercel, prefer explicit `HEYGEN_*` and `FSP_PUBLIC_BASE_URL`.
+
+## Environment setup
+
+1. Copy `.env.example` → `.env.local` (gitignored).
+2. Never commit `.env.local` or real secret values.
+3. For Vercel, set project env vars in the dashboard or CLI (see below).
+
+Required for **bridge configuration check** (status endpoint reports `configured: true`):
+
+- `HEYGEN_API_KEY` (or local fallback `LIVEAVATAR_API_KEY`)
+- `HEYGEN_LIVEAVATAR_AVATAR_ID` (or `LIVEAVATAR_AVATAR_ID`)
+- `FSP_PUBLIC_BASE_URL` (or rely on `VERCEL_URL` on Vercel)
+
+LiveAvatar **session-token minting** and WebRTC runtime remain **not implemented** — `POST /api/integrations/heygen/session-token` returns 503 `not_configured` until a future PR verifies the provider contract.
+
+## Manual Vercel deployment
+
+Vercel CLI was available via `npx vercel` but **no credentials** were present in this environment (device login required). Perform deployment manually:
+
+1. Import `alexv-mc2/fsp-liveavatar-sle-prototype` in [Vercel Dashboard](https://vercel.com/new).
+2. Framework preset: **Next.js**; build command `npm run build`; output default.
+3. Set environment variables (Production + Preview as needed):
+   - `FSP_PUBLIC_BASE_URL` = `https://<your-production-domain>`
+   - `HEYGEN_API_KEY` = *(from secure store; same value as ExpoWall `LIVEAVATAR_API_KEY` if reusing)*
+   - `HEYGEN_LIVEAVATAR_AVATAR_ID` = *(same as ExpoWall `LIVEAVATAR_AVATAR_ID` if reusing)*
+   - Optional: `HEYGEN_LIVEAVATAR_VOICE_ID`
+4. Deploy. Note the production URL.
+5. Smoke-test:
+   ```bash
+   curl https://<domain>/api/health
+   curl -X POST https://<domain>/v1/chat/completions \
+     -H 'content-type: application/json' \
+     -d '{"model":"gpt-4","messages":[{"role":"user","content":"Guten Tag"}]}'
+   ```
+
+CLI equivalent (after `npx vercel login`):
+
+```bash
+npx vercel link
+npx vercel env add FSP_PUBLIC_BASE_URL production
+npx vercel env add HEYGEN_API_KEY production
+npx vercel env add HEYGEN_LIVEAVATAR_AVATAR_ID production
+npx vercel --prod
+```
+
+**Do not** paste secrets into chat, commits, or CI logs.
+
+## Manual HeyGen / LiveAvatar setup sequence
+
+1. **Choose avatar** — use current LiveAvatar avatar ID (same as `HEYGEN_LIVEAVATAR_AVATAR_ID` / ExpoWall `LIVEAVATAR_AVATAR_ID`).
+2. **Custom LLM URL** — set to `https://<vercel-domain>/v1/chat/completions` in HeyGen LLM configuration.
+3. **Minimal HeyGen Context** — short German patient role only; **no** case YAML, links, or lab content in HeyGen.
+4. **German patient opening** — start session; verify opening complaint matches backend (`POST /api/sessions` + first completion or HeyGen-driven turn).
+5. **Session continuity** — if HeyGen sends metadata, confirm `x-fsp-session-id` header (or body `session_id`) keeps the same FSP session across turns (`x_fsp.correlation` in response).
+6. **Patient-phase lab blocking** — ask for ANA/C3 during anamnesis; patient must refuse numeric lab values.
+7. **Real-user medical safety** — ask for diagnosis/treatment; session should exit safely per guardrails.
+8. **Push-to-Talk** — verify turn boundaries and interruption behavior on HeyGen side (backend PTT audio **not implemented** here).
+9. **Transcript events** — compare HeyGen transcript with `x_fsp.session.transcriptTurns` during mock/spike.
+10. **Stop session** — explicit stop on both client and provider; confirm no orphaned sessions.
+11. **Provider deletion/retention** — document HeyGen data retention and deletion guarantees for production compliance.
+
+## What remains mocked / manual
+
+| Item | Status |
+| --- | --- |
+| Custom LLM patient logic | Mock deterministic keyword simulation |
+| Avatar video / WebRTC | Mock UI only |
+| HeyGen session token API | Fail-closed 503 |
+| Push-to-Talk audio | Text substitute only |
+| Streaming (`stream: true`) | Rejected 400 |
+| Session persistence | In-memory single process |
+| Supabase transcripts | Deferred |
+
+## Config check endpoints
+
+```bash
+curl http://localhost:3000/api/health
+curl http://localhost:3000/api/integrations/heygen/status
+```
+
+`heygen_integration.bridge` reports deployment target, Custom LLM URL, alias presence flags (booleans only), and Supabase deferral note.
+
+## Privacy and secret safety
+
+- No API keys in source control.
+- `.env.local` remains gitignored; `.env.example` contains names only.
+- Status/health endpoints expose **variable names and boolean presence**, never secret values.
+- ExpoWall was inspected read-only; sibling repos were not modified.
+
+## Next persistence slice (after bridge works)
+
+1. Deploy stable Vercel production URL and wire HeyGen Custom LLM.
+2. Run manual HeyGen checklist above.
+3. Add Supabase/Postgres for sessions, transcripts, revealed facts, feedback.
+4. Implement verified LiveAvatar session-token minting aligned with ExpoWall `POST /v1/sessions/token` pattern.

@@ -36,6 +36,14 @@ export function getHeyGenIntegrationStatus(): {
   streaming: "not_implemented";
   push_to_talk: "not_implemented";
   env: HeyGenEnvSnapshot;
+  bridge: {
+    deployment_target: "vercel";
+    custom_llm_url: string | null;
+    session_persistence: "in_memory_deferred_supabase";
+    liveavatar_runtime: "not_implemented";
+    heygen_context_policy: "minimal_role_only_backend_owns_fsp_context";
+    documentation: "docs/VERCEL_HEYGEN_BRIDGE.md";
+  };
 } {
   const env = readHeyGenEnvSnapshot();
   return {
@@ -47,6 +55,14 @@ export function getHeyGenIntegrationStatus(): {
     streaming: "not_implemented",
     push_to_talk: "not_implemented",
     env,
+    bridge: {
+      deployment_target: "vercel",
+      custom_llm_url: env.customLlmUrl,
+      session_persistence: "in_memory_deferred_supabase",
+      liveavatar_runtime: "not_implemented",
+      heygen_context_policy: "minimal_role_only_backend_owns_fsp_context",
+      documentation: "docs/VERCEL_HEYGEN_BRIDGE.md",
+    },
   };
 }
 

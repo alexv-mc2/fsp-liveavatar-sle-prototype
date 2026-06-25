@@ -16,6 +16,8 @@ beforeEach(() => {
   delete process.env[HEYGEN_ENV.API_KEY];
   delete process.env[HEYGEN_ENV.LIVEAVATAR_AVATAR_ID];
   delete process.env[HEYGEN_ENV.PUBLIC_BASE_URL];
+  delete process.env[HEYGEN_ENV.LIVEAVATAR_VOICE_ID];
+  delete process.env.VERCEL_URL;
 });
 
 describe("HeyGen placeholder integration", () => {
@@ -29,6 +31,8 @@ describe("HeyGen placeholder integration", () => {
     expect(body.mode).toBe("FULL");
     expect(body.custom_llm_path).toBe("/v1/chat/completions");
     expect(body.streaming).toBe("not_implemented");
+    expect(body.bridge.deployment_target).toBe("vercel");
+    expect(body.bridge.session_persistence).toBe("in_memory_deferred_supabase");
     expect(body.env.missing).toContain(HEYGEN_ENV.API_KEY);
   });
 
