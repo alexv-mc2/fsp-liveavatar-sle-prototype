@@ -45,15 +45,17 @@ function clearLiveAvatarEnv() {
   }
 }
 
-function setConfiguredLiveAvatarEnv(useAliases = false) {
+function setConfiguredLiveAvatarEnv(useAliases = false, includeContext = true) {
   process.env[useAliases ? EXPO_WALL_LIVEAVATAR_ENV.API_KEY : HEYGEN_ENV.API_KEY] =
     "test-api-key";
   process.env[
     useAliases ? EXPO_WALL_LIVEAVATAR_ENV.AVATAR_ID : HEYGEN_ENV.LIVEAVATAR_AVATAR_ID
   ] = TEST_IDS.avatar;
-  process.env[
-    useAliases ? EXPO_WALL_LIVEAVATAR_ENV.CONTEXT_ID : HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID
-  ] = TEST_IDS.context;
+  if (includeContext) {
+    process.env[
+      useAliases ? EXPO_WALL_LIVEAVATAR_ENV.CONTEXT_ID : HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID
+    ] = TEST_IDS.context;
+  }
   process.env[
     useAliases
       ? EXPO_WALL_LIVEAVATAR_ENV.LLM_CONFIGURATION_ID
@@ -78,9 +80,19 @@ describe("LiveAvatar env resolution", () => {
     expect(env.sessionTokenMissing).toEqual([
       HEYGEN_ENV.API_KEY,
       HEYGEN_ENV.LIVEAVATAR_AVATAR_ID,
-      HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID,
       HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID,
     ]);
+  });
+
+  it("considers session token configured without context_id", () => {
+    setConfiguredLiveAvatarEnv(false, false);
+    const env = readHeyGenEnvSnapshot();
+    expect(env.sessionTokenConfigured).toBe(true);
+    expect(env.sessionTokenMissing).toEqual([]);
+    expect(env.resolvedFrom.contextId).toBeNull();
+
+    const runtime = readLiveAvatarRuntimeConfig();
+    expect(runtime?.contextId).toBeNull();
   });
 
   it("accepts ExpoWall LIVEAVATAR_* aliases for runtime config", () => {
@@ -115,6 +127,19 @@ describe("LiveAvatar session token request body", () => {
         voice_id: TEST_IDS.voice,
       },
     });
+  });
+
+  it("omits context_id from avatar_persona when unset", () => {
+    setConfiguredLiveAvatarEnv(false, false);
+    const runtime = readLiveAvatarRuntimeConfig();
+    expect(runtime).not.toBeNull();
+
+    const body = buildCreateSessionTokenBody(runtime!);
+    expect(body.avatar_persona).toEqual({
+      language: "de",
+      voice_id: TEST_IDS.voice,
+    });
+    expect(body.avatar_persona).not.toHaveProperty("context_id");
   });
 });
 
@@ -225,9 +250,12 @@ describe("LiveAvatar session token route", () => {
   });
 
   it("GET status reports configured when session env is complete", async () => {
-    setConfiguredLiveAvatarEnv(false);
+    setConfiguredLiveAvatarEnv(false, false);
     const status = getHeyGenIntegrationStatus();
     expect(status.session_token_configured).toBe(true);
     expect(status.connected).toBe(true);
+    expect(status.bridge.heygen_context_policy).toBe(
+      "context_id_optional_backend_owns_fsp_context",
+    );
   });
 });

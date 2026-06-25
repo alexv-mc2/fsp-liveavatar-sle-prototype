@@ -43,7 +43,7 @@ export type LiveAvatarInteractivityType = "PUSH_TO_TALK" | "CONVERSATIONAL";
 export type LiveAvatarRuntimeConfig = {
   apiKey: string;
   avatarId: string;
-  contextId: string;
+  contextId: string | null;
   llmConfigurationId: string;
   voiceId: string | null;
   apiBaseUrl: string;
@@ -56,7 +56,7 @@ export type LiveAvatarRuntimeConfig = {
   resolvedFrom: {
     apiKey: string;
     avatarId: string;
-    contextId: string;
+    contextId: string | null;
     llmConfigurationId: string;
     voiceId: string | null;
   };
@@ -172,7 +172,6 @@ export function readExpoWallAliasPresence(): HeyGenEnvSnapshot["expoWallAliasesP
 function collectSessionTokenMissing(
   apiKey: ReturnType<typeof firstPresent>,
   avatarId: ReturnType<typeof firstPresent>,
-  contextId: ReturnType<typeof firstPresent>,
   llmConfigurationId: ReturnType<typeof firstPresent>,
 ): string[] {
   const missing: string[] = [];
@@ -181,9 +180,6 @@ function collectSessionTokenMissing(
   }
   if (!avatarId) {
     missing.push(HEYGEN_ENV.LIVEAVATAR_AVATAR_ID);
-  }
-  if (!contextId) {
-    missing.push(HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID);
   }
   if (!llmConfigurationId) {
     missing.push(HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID);
@@ -219,7 +215,6 @@ export function readHeyGenEnvSnapshot(): HeyGenEnvSnapshot {
   const sessionTokenMissing = collectSessionTokenMissing(
     apiKey,
     avatarId,
-    contextId,
     llmConfigurationId,
   );
 
@@ -270,7 +265,7 @@ export function readLiveAvatarRuntimeConfig(): LiveAvatarRuntimeConfig | null {
   const contextId = firstPresent([
     HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID,
     EXPO_WALL_LIVEAVATAR_ENV.CONTEXT_ID,
-  ])!;
+  ]);
   const llmConfigurationId = firstPresent([
     HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID,
     EXPO_WALL_LIVEAVATAR_ENV.LLM_CONFIGURATION_ID,
@@ -287,7 +282,7 @@ export function readLiveAvatarRuntimeConfig(): LiveAvatarRuntimeConfig | null {
   return {
     apiKey: apiKey.value,
     avatarId: avatarId.value,
-    contextId: contextId.value,
+    contextId: contextId?.value ?? null,
     llmConfigurationId: llmConfigurationId.value,
     voiceId: voiceId?.value ?? null,
     apiBaseUrl,
@@ -308,7 +303,7 @@ export function readLiveAvatarRuntimeConfig(): LiveAvatarRuntimeConfig | null {
     resolvedFrom: {
       apiKey: apiKey.name,
       avatarId: avatarId.name,
-      contextId: contextId.name,
+      contextId: contextId?.name ?? null,
       llmConfigurationId: llmConfigurationId.name,
       voiceId: voiceId?.name ?? null,
     },

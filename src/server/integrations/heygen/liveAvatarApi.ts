@@ -42,9 +42,12 @@ export function buildCreateSessionTokenBody(
   config: LiveAvatarRuntimeConfig,
 ): Record<string, unknown> {
   const avatarPersona: Record<string, string> = {
-    context_id: config.contextId,
     language: config.language,
   };
+
+  if (config.contextId) {
+    avatarPersona.context_id = config.contextId;
+  }
 
   if (config.voiceId) {
     avatarPersona.voice_id = config.voiceId;

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { GET as heygenStatusGet } from "@/app/api/integrations/heygen/status/route";
 import { POST as heygenSessionTokenPost } from "@/app/api/integrations/heygen/session-token/route";
 import { POST as chatRoutePost } from "@/app/v1/chat/completions/route";
-import { HEYGEN_ENV } from "@/server/integrations/heygen/env";
+import { HEYGEN_ENV, EXPO_WALL_LIVEAVATAR_ENV } from "@/server/integrations/heygen/env";
 import { loadScenario } from "@/server/fsp/scenarioLoader";
 import { InMemorySessionStore, sessionStore } from "@/server/fsp/scenarioState";
 import { processChatCompletion } from "@/server/routes/chatCompletions";
@@ -20,6 +20,9 @@ beforeEach(() => {
   delete process.env[HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID];
   delete process.env[HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID];
   delete process.env.VERCEL_URL;
+  for (const name of Object.values(EXPO_WALL_LIVEAVATAR_ENV)) {
+    delete process.env[name];
+  }
 });
 
 describe("HeyGen placeholder integration", () => {
