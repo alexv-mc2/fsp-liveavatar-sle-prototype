@@ -28,7 +28,7 @@ facts:
     category: chief_complaint
     visibility: opening
     allowed_phases: [patient_opening, anamnesis_active, patient_questions]
-    trigger_keywords: ["müde", "mued", "erschöpft", "erschoepft", "schwäche", "schwaeche", "fatigue", "hauptbeschwerde", "beschwerden", "erschoepfung"]
+    trigger_keywords: ["müde", "mued", "erschöpft", "erschoepft", "schwäche", "schwaeche", "fatigue", "hauptbeschwerde", "erschoepfung", "belastbarkeit"]
     answer_de: "Ich bin seit ungefähr acht Wochen ungewöhnlich müde und nach der Schule völlig erledigt."
     checklist_item: chief_complaint
     source_status: "[PROTOTYPE]"
@@ -37,7 +37,7 @@ facts:
     category: timeline
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["seit wann", "wie lange", "beginn", "angefangen", "dauer", "wann angefangen"]
+    trigger_keywords: ["seit wann", "wie lange", "beginn", "angefangen", "dauer", "wann angefangen", "bestehen die", "wann haben die"]
     answer_de: "Die Gelenkbeschwerden bestehen seit etwa sechs Wochen und sind langsam stärker geworden."
     checklist_item: symptom_timeline
     source_status: "[PROTOTYPE]"
@@ -46,7 +46,7 @@ facts:
     category: musculoskeletal
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["gelenk", "gelenke", "gelenkschmerz", "hände", "haende", "handgelenk", "finger", "beidseitig", "symmetr", "bewegung", "schwellung"]
+    trigger_keywords: ["gelenk", "gelenke", "gelenkschmerz", "hände", "haende", "handgelenk", "handgelenke", "finger", "mcp", "pip", "fingergrund", "beidseitig", "symmetr", "bewegung", "schwellung", "schmerzen wo"]
     answer_de: "Vor allem beide Handgelenke und die Fingergrund- und mittleren Gelenke tun weh, meistens auf beiden Seiten. Einige Fingergelenke wirken manchmal etwas geschwollen."
     checklist_item: joint_pain
     source_status: "[PROTOTYPE]"
@@ -55,7 +55,7 @@ facts:
     category: musculoskeletal
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["morgensteif", "steif", "morgens", "steifigkeit", "beweglich"]
+    trigger_keywords: ["morgensteif", "steif", "morgens", "steifigkeit", "beweglich", "eine stunde", "anderthalb", "besser wird"]
     answer_de: "Morgens brauche ich meistens eine bis anderthalb Stunden, bis es besser wird. Wenn ich mich bewege, wird es langsam besser."
     checklist_item: joint_pain
     source_status: "[PROTOTYPE]"
@@ -64,7 +64,7 @@ facts:
     category: skin
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["ausschlag", "haut", "rötung", "roetung", "gesicht", "wangen", "nase", "schmetterling", "erythem"]
+    trigger_keywords: ["ausschlag", "haut", "rötung", "roetung", "gesicht", "wangen", "nase", "schmetterling", "erythem", "flache", "pickel", "bläschen", "blaschen"]
     answer_de: "Es ist eine flache Rötung über den Wangen und der Nase. Pickel oder Bläschen habe ich dort nicht bemerkt."
     checklist_item: skin_symptoms
     source_status: "[PROTOTYPE][REVIEW]"
@@ -73,7 +73,7 @@ facts:
     category: skin
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["sonne", "licht", "uv", "photosens", "sonnenlicht", "lichtempfindlich", "sonnig"]
+    trigger_keywords: ["sonne", "licht", "uv", "photosens", "sonnenlicht", "lichtempfindlich", "sonnig", "gesicht rot", "sonnenausflug"]
     answer_de: "Nach viel Sonne wird mein Gesicht später am Tag oder am nächsten Tag deutlich röter."
     checklist_item: photosensitivity
     source_status: "[PROTOTYPE]"
@@ -82,7 +82,7 @@ facts:
     category: constitutional
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["fieber", "temperatur", "schüttelfrost", "schuettelfrost", "grad", "gemessen"]
+    trigger_keywords: ["fieber", "temperatur", "schüttelfrost", "schuettelfrost", "grad", "gemessen", "38", "37,8", "37.8"]
     answer_de: "Ich habe selbst gemessen, meistens 37,8 bis höchstens 38,2 Grad. Schüttelfrost hatte ich nicht."
     checklist_item: fever
     source_status: "[PROTOTYPE][VERIFIED]"
@@ -118,7 +118,7 @@ facts:
     category: medication
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["medikament", "tablette", "ibuprofen", "schmerzmittel", "nehmen sie", "dosis"]
+    trigger_keywords: ["medikament", "tablette", "ibuprofen", "schmerzmittel", "nehmen sie", "dosis", "bedarf", "woche"]
     answer_de: "Ibuprofen 400 Milligramm, ungefähr drei- bis viermal pro Woche, seit zwei Wochen bei Bedarf."
     checklist_item: medication
     source_status: "[PROTOTYPE][REVIEW]"
@@ -190,7 +190,7 @@ facts:
     category: family_history
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["familienanamnese", "familie krank", "mutter", "vater", "tante", "erblich", "schilddrüse", "rheuma"]
+    trigger_keywords: ["familienanamnese", "familie krank", "mutter", "vater", "tante", "erblich", "schilddrüse", "schilddruese", "hashimoto", "rheuma"]
     answer_de: "Meine Mutter hat Hashimoto. Eine Tante mütterlicherseits hat rheumatoide Arthritis, sie sagt einfach Rheuma."
     checklist_item: family_history
     source_status: "[PROTOTYPE]"
@@ -199,7 +199,7 @@ facts:
     category: gynecology
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["menstruation", "regelblutung", "periode", "gynäk", "gynaek", "spirale", "kontrazeption", "letzte periode"]
+    trigger_keywords: ["menstruation", "regelblutung", "periode", "regel", "gynäk", "gynaek", "spirale", "kupfer", "kontrazeption", "letzte periode"]
     answer_de: "Meine Periode ist regelmäßig, alle 28 bis 30 Tage. Die letzte begann vor zwölf Tagen. Ich habe eine Kupferspirale."
     checklist_item: gynecological_history
     source_status: "[PROTOTYPE][REVIEW]"
@@ -226,7 +226,7 @@ facts:
     category: organ_involvement
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["atemnot", "brustschmerz", "luftnot", "husten", "blut", "hemoptysis"]
+    trigger_keywords: ["atemnot", "brustschmerz", "luftnot", "husten", "bluthusten", "hemoptysis"]
     answer_de: "Nein, keine Brustschmerzen, keine Luftnot und kein Bluthusten."
     checklist_item: red_flags
     source_status: "[PROTOTYPE]"
@@ -235,7 +235,7 @@ facts:
     category: organ_involvement
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["urin", "niere", "schwellung", "ödem", "oedem", "schaum", "blut im urin", "weniger urin"]
+    trigger_keywords: ["urin", "niere", "schwellung", "ödem", "oedem", "schaum", "blut im urin", "weniger urin", "beine geschwollen", "proteinurie"]
     answer_de: "Nein, kein Blut, kein auffälliger Schaum und keine geschwollenen Beine."
     checklist_item: red_flags
     source_status: "[PROTOTYPE]"
