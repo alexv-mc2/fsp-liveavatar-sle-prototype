@@ -41,9 +41,9 @@ Custom LLM wiring for LiveAvatar FULL Mode is **not** done through a visible Hey
 
 1. **Create a Custom LLM configuration** via the LiveAvatar **LLM Configurations API**, with the callback URL `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions` (or your own `https://<vercel-domain>/v1/chat/completions` for other deployments).
 2. Store the returned **`llm_configuration_id`** (FSP/ExpoWall env name: `LIVEAVATAR_LLM_CONFIGURATION_ID`).
-3. **Create Session Token** (`POST /v1/sessions/token`) must include that `llm_configuration_id` together with `avatar_id`, `voice_id` / `context_id` (inside `avatar_persona`), `language`, `max_session_duration`, and `interactivity_type`.
+3. **Create Session Token** (`POST /v1/sessions/token`) must include that `llm_configuration_id` together with `avatar_id`, optional `voice_id` / optional `context_id` (inside `avatar_persona`), `language`, `max_session_duration`, and `interactivity_type`.
 
-LiveAvatar **context** (`context_id`) is for a minimal role/opening only. **Do not** put case facts, lab values, guardrails, or DeepSearch content there — the patient brain is **`POST /v1/chat/completions`** in this backend.
+LiveAvatar **context** (`context_id`) is **optional** for the FSP SLE architecture when the HeyGen avatar has no context UI and ElevenLabs voice is already connected. If used, keep it minimal (short German role/opening only). **Do not** put case facts, lab values, guardrails, or DeepSearch content there — the patient brain is **`POST /v1/chat/completions`** in this backend.
 
 ## HeyGen context vs FSP context (critical)
 
@@ -72,7 +72,7 @@ ExpoWall uses `@heygen/liveavatar-web-sdk` and server routes under `/api/liveava
 | `LIVEAVATAR_API_KEY` | `HEYGEN_API_KEY` | Server-only; session token minting |
 | `LIVEAVATAR_AVATAR_ID` | `HEYGEN_LIVEAVATAR_AVATAR_ID` | Avatar selection |
 | `LIVEAVATAR_VOICE_ID` | `HEYGEN_LIVEAVATAR_VOICE_ID` | Optional voice override |
-| `LIVEAVATAR_CONTEXT_ID` | *(HeyGen-side only)* | Minimal HeyGen context record ID — **not** FSP case content |
+| `LIVEAVATAR_CONTEXT_ID` | `HEYGEN_LIVEAVATAR_CONTEXT_ID` (optional) | Minimal HeyGen context — **omit** when avatar has no context UI; **not** FSP case content |
 | `LIVEAVATAR_LLM_CONFIGURATION_ID` | *(LiveAvatar API only)* | ID from LiveAvatar LLM Configurations API |
 | `LIVEAVATAR_BASE_URL` | default `https://api.liveavatar.com` | API base |
 | `LIVEAVATAR_LANGUAGE` | — | Default `de` in ExpoWall |
@@ -95,7 +95,12 @@ Required for **bridge configuration check** (status endpoint reports `configured
 
 - `HEYGEN_API_KEY` (or local fallback `LIVEAVATAR_API_KEY`)
 - `HEYGEN_LIVEAVATAR_AVATAR_ID` (or `LIVEAVATAR_AVATAR_ID`)
+- `HEYGEN_LIVEAVATAR_LLM_CONFIGURATION_ID` (or `LIVEAVATAR_LLM_CONFIGURATION_ID`)
 - `FSP_PUBLIC_BASE_URL` (or rely on `VERCEL_URL` on Vercel)
+
+Required for **session-token minting** (`session_token_configured: true`): same as above except `FSP_PUBLIC_BASE_URL` is not required for minting (only for full `configured: true` bridge check and Custom LLM URL display).
+
+Optional: `HEYGEN_LIVEAVATAR_VOICE_ID` (connected ElevenLabs voice UUID in HeyGen), `HEYGEN_LIVEAVATAR_CONTEXT_ID` (omit when HeyGen avatar has no context configuration).
 
 LiveAvatar **session-token minting** is implemented server-side — see `docs/LIVEAVATAR_SESSION_TOKEN.md`. WebRTC client / Push-to-Talk audio remain **not implemented**.
 
@@ -135,8 +140,8 @@ npx vercel --prod
 
 1. **Choose avatar** — use current LiveAvatar avatar ID (same as `HEYGEN_LIVEAVATAR_AVATAR_ID` / ExpoWall `LIVEAVATAR_AVATAR_ID`).
 2. **Create Custom LLM via API** — call LiveAvatar LLM Configurations API with URL `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions`; save `llm_configuration_id`. *(Not available as a visible HeyGen website setting.)*
-3. **Minimal LiveAvatar context** — `context_id` carries short German patient role/opening only; **no** case YAML, links, or lab content. Full FSP logic stays in `/v1/chat/completions`.
-4. **Mint session token** — `POST /v1/sessions/token` with `llm_configuration_id`, `avatar_id`, persona `context_id`/`voice_id`, `language`, `max_session_duration`, `interactivity_type`.
+3. **Optional LiveAvatar context** — only if you choose to set `HEYGEN_LIVEAVATAR_CONTEXT_ID`; short German patient role/opening only. **Skip** when HeyGen avatar has no context UI. Full FSP logic stays in `/v1/chat/completions`.
+4. **Mint session token** — `POST /v1/sessions/token` with `llm_configuration_id`, `avatar_id`, persona `language` + optional `voice_id` / optional `context_id`, `max_session_duration`, `interactivity_type`.
 5. **German patient opening** — start session; verify opening complaint matches backend (`POST /api/sessions` + first completion or HeyGen-driven turn).
 6. **Session continuity** — if HeyGen sends metadata, confirm `x-fsp-session-id` header (or body `session_id`) keeps the same FSP session across turns (`x_fsp.correlation` in response).
 7. **Patient-phase lab blocking** — ask for ANA/C3 during anamnesis; patient must refuse numeric lab values.

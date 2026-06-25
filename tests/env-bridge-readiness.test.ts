@@ -63,7 +63,6 @@ describe("env and bridge readiness", () => {
     process.env[HEYGEN_ENV.PUBLIC_BASE_URL] = "fsp-liveavatar.example.com";
     process.env[HEYGEN_ENV.API_KEY] = "test-key";
     process.env[HEYGEN_ENV.LIVEAVATAR_AVATAR_ID] = "test-avatar";
-    process.env[HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID] = "test-context";
     process.env[HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID] = "test-llm";
 
     const env = readHeyGenEnvSnapshot();
@@ -75,13 +74,13 @@ describe("env and bridge readiness", () => {
     );
     expect(env.configured).toBe(true);
     expect(env.sessionTokenConfigured).toBe(true);
+    expect(env.resolvedFrom.contextId).toBeNull();
   });
 
   it("readHeyGenEnvSnapshot uses VERCEL_URL when FSP_PUBLIC_BASE_URL is unset", () => {
     process.env.VERCEL_URL = "fsp-liveavatar-sle-prototype.vercel.app";
     process.env[HEYGEN_ENV.API_KEY] = "test-key";
     process.env[HEYGEN_ENV.LIVEAVATAR_AVATAR_ID] = "test-avatar";
-    process.env[HEYGEN_ENV.LIVEAVATAR_CONTEXT_ID] = "test-context";
     process.env[HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID] = "test-llm";
 
     const env = readHeyGenEnvSnapshot();

@@ -57,7 +57,7 @@ export function getHeyGenIntegrationStatus(): {
     custom_llm_url: string | null;
     session_persistence: "in_memory_deferred_supabase";
     liveavatar_runtime: "session_token_api";
-    heygen_context_policy: "minimal_role_only_backend_owns_fsp_context";
+    heygen_context_policy: "context_id_optional_backend_owns_fsp_context";
     documentation: "docs/LIVEAVATAR_SESSION_TOKEN.md";
   };
 } {
@@ -77,7 +77,8 @@ export function getHeyGenIntegrationStatus(): {
       custom_llm_url: env.customLlmUrl,
       session_persistence: "in_memory_deferred_supabase",
       liveavatar_runtime: "session_token_api",
-      heygen_context_policy: "minimal_role_only_backend_owns_fsp_context",
+      heygen_context_policy:
+        "context_id_optional_backend_owns_fsp_context",
       documentation: "docs/LIVEAVATAR_SESSION_TOKEN.md",
     },
   };
