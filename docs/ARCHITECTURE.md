@@ -54,7 +54,7 @@ The global in-memory store is suitable only for one local Node process. It survi
 
 ## Deployment (Vercel)
 
-**Vercel** hosts the Next.js app and API routes for this prototype. HeyGen LiveAvatar calls the public Custom LLM at `https://<vercel-domain>/v1/chat/completions`. GitHub Pages and Codespaces are not deployment targets.
+**Vercel** hosts the Next.js app and API routes for this prototype. Production Custom LLM: `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions` (generic form: `https://<vercel-domain>/v1/chat/completions`). GitHub Pages and Codespaces are not deployment targets.
 
 HeyGen-side Context must stay minimal (role instruction only); FSP case content, guardrails, and hidden-fact policy live in this backend (`content/fsp-nrw-sle/` and server routes).
 

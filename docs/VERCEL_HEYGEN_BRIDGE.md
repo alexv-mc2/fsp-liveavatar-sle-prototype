@@ -12,11 +12,21 @@ This slice prepares a **public HTTPS Custom LLM endpoint** for HeyGen LiveAvatar
 
 ## Stable Custom LLM URL
 
-HeyGen must call:
+HeyGen / LiveAvatar must call a public HTTPS endpoint of the form:
 
 ```text
 https://<your-vercel-domain>/v1/chat/completions
 ```
+
+**Deployed production instance (this repo):**
+
+| Endpoint | URL |
+| --- | --- |
+| Base | `https://fsp-liveavatar-sle-prototype.vercel.app` |
+| Custom LLM | `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions` |
+| Health | `https://fsp-liveavatar-sle-prototype.vercel.app/api/health` |
+
+Set `FSP_PUBLIC_BASE_URL=https://fsp-liveavatar-sle-prototype.vercel.app` in Vercel if you need an explicit stable callback URL (overrides auto-injected `VERCEL_URL`).
 
 Compatibility alias: `POST /chat/completions` (same handler).
 
@@ -25,15 +35,11 @@ Correlation for FSP session continuity:
 - Preferred header: `x-fsp-session-id`
 - Body fallbacks: `session_id`, `metadata.session_id` (see `docs/CUSTOM_LLM_API_CONTRACT.md`)
 
-Set `FSP_PUBLIC_BASE_URL` in Vercel to your **stable production domain** (not a ephemeral preview URL) before wiring HeyGen production context.
-
-On Vercel, `VERCEL_URL` is injected automatically; `FSP_PUBLIC_BASE_URL` overrides it when you need a fixed callback URL.
-
 ## LiveAvatar Custom LLM API path (official)
 
 Custom LLM wiring for LiveAvatar FULL Mode is **not** done through a visible HeyGen website UI. The provider flow is API-driven:
 
-1. **Create a Custom LLM configuration** via the LiveAvatar **LLM Configurations API**, with the callback URL `https://<vercel-domain>/v1/chat/completions`.
+1. **Create a Custom LLM configuration** via the LiveAvatar **LLM Configurations API**, with the callback URL `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions` (or your own `https://<vercel-domain>/v1/chat/completions` for other deployments).
 2. Store the returned **`llm_configuration_id`** (FSP/ExpoWall env name: `LIVEAVATAR_LLM_CONFIGURATION_ID`).
 3. **Create Session Token** (`POST /v1/sessions/token`) must include that `llm_configuration_id` together with `avatar_id`, `voice_id` / `context_id` (inside `avatar_persona`), `language`, `max_session_duration`, and `interactivity_type`.
 
@@ -93,25 +99,25 @@ Required for **bridge configuration check** (status endpoint reports `configured
 
 LiveAvatar **session-token minting** and WebRTC runtime remain **not implemented** — `POST /api/integrations/heygen/session-token` returns 503 `not_configured` until a future PR verifies the provider contract.
 
-## Manual Vercel deployment
+## Vercel deployment
 
-Vercel CLI was available via `npx vercel` but **no credentials** were present in this environment (device login required). Perform deployment manually:
+Production is deployed at **https://fsp-liveavatar-sle-prototype.vercel.app**. Public smoke tests (2026-06-25): `GET /api/health` returns `status: ok`; `POST /v1/chat/completions` returns OpenAI-compatible `chat.completion` with `x_fsp.mock: true`.
 
-1. Import `alexv-mc2/fsp-liveavatar-sle-prototype` in [Vercel Dashboard](https://vercel.com/new).
-2. Framework preset: **Next.js**; build command `npm run build`; output default.
-3. Set environment variables (Production + Preview as needed):
-   - `FSP_PUBLIC_BASE_URL` = `https://<your-production-domain>`
-   - `HEYGEN_API_KEY` = *(from secure store; same value as ExpoWall `LIVEAVATAR_API_KEY` if reusing)*
-   - `HEYGEN_LIVEAVATAR_AVATAR_ID` = *(same as ExpoWall `LIVEAVATAR_AVATAR_ID` if reusing)*
-   - Optional: `HEYGEN_LIVEAVATAR_VOICE_ID`
-4. Deploy. Note the production URL.
-5. Smoke-test:
-   ```bash
-   curl https://<domain>/api/health
-   curl -X POST https://<domain>/v1/chat/completions \
-     -H 'content-type: application/json' \
-     -d '{"model":"gpt-4","messages":[{"role":"user","content":"Guten Tag"}]}'
-   ```
+For new environments or forks, import `alexv-mc2/fsp-liveavatar-sle-prototype` in [Vercel Dashboard](https://vercel.com/new) (Next.js preset) and set:
+
+- `FSP_PUBLIC_BASE_URL` = `https://<your-production-domain>` *(optional on Vercel; use for a fixed callback URL)*
+- `HEYGEN_API_KEY` = *(from secure store)*
+- `HEYGEN_LIVEAVATAR_AVATAR_ID` = *(from secure store)*
+- Optional: `HEYGEN_LIVEAVATAR_VOICE_ID`
+
+Smoke-test (replace domain as needed):
+
+```bash
+curl https://fsp-liveavatar-sle-prototype.vercel.app/api/health
+curl -X POST https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{"model":"gpt-4","messages":[{"role":"user","content":"Guten Tag"}]}'
+```
 
 CLI equivalent (after `npx vercel login`):
 
@@ -128,7 +134,7 @@ npx vercel --prod
 ## Manual HeyGen / LiveAvatar setup sequence
 
 1. **Choose avatar** — use current LiveAvatar avatar ID (same as `HEYGEN_LIVEAVATAR_AVATAR_ID` / ExpoWall `LIVEAVATAR_AVATAR_ID`).
-2. **Create Custom LLM via API** — call LiveAvatar LLM Configurations API with URL `https://<vercel-domain>/v1/chat/completions`; save `llm_configuration_id`. *(Not available as a visible HeyGen website setting.)*
+2. **Create Custom LLM via API** — call LiveAvatar LLM Configurations API with URL `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions`; save `llm_configuration_id`. *(Not available as a visible HeyGen website setting.)*
 3. **Minimal LiveAvatar context** — `context_id` carries short German patient role/opening only; **no** case YAML, links, or lab content. Full FSP logic stays in `/v1/chat/completions`.
 4. **Mint session token** — `POST /v1/sessions/token` with `llm_configuration_id`, `avatar_id`, persona `context_id`/`voice_id`, `language`, `max_session_duration`, `interactivity_type`.
 5. **German patient opening** — start session; verify opening complaint matches backend (`POST /api/sessions` + first completion or HeyGen-driven turn).
@@ -170,7 +176,7 @@ curl http://localhost:3000/api/integrations/heygen/status
 
 ## Next persistence slice (after bridge works)
 
-1. Deploy stable Vercel production URL and wire HeyGen Custom LLM.
+1. Deploy stable Vercel production URL — **done:** `https://fsp-liveavatar-sle-prototype.vercel.app`. Wire LiveAvatar Custom LLM (next slice).
 2. Run manual HeyGen checklist above.
 3. Add Supabase/Postgres for sessions, transcripts, revealed facts, feedback.
 4. Implement verified LiveAvatar session-token minting aligned with ExpoWall `POST /v1/sessions/token` pattern.

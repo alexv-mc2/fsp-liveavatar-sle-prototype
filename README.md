@@ -102,6 +102,8 @@ Environment variable names (placeholders in `.env.example`; never commit values)
 
 Custom LLM target: `POST /v1/chat/completions` with header `x-fsp-session-id`.
 
+**Production (Vercel):** `https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions`
+
 - Custom LLM contract: `docs/CUSTOM_LLM_API_CONTRACT.md`
 - Vercel deployment + HeyGen manual setup: `docs/VERCEL_HEYGEN_BRIDGE.md`
 
