@@ -99,6 +99,44 @@ async function parseLiveAvatarResponse<T>(
   return payload;
 }
 
+export async function fetchLiveAvatarLlmConfigurationBaseUrl(
+  config: Pick<LiveAvatarRuntimeConfig, "apiKey" | "apiBaseUrl" | "llmConfigurationId">,
+  fetchFn: typeof fetch = fetch,
+): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    LIVEAVATAR_REQUEST_TIMEOUT_MS,
+  );
+
+  try {
+    const response = await fetchFn(
+      buildLiveAvatarApiUrl(
+        config.apiBaseUrl,
+        `/v1/llm-configurations/${config.llmConfigurationId}`,
+      ),
+      {
+        method: "GET",
+        headers: {
+          "X-API-KEY": config.apiKey,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    );
+    const payload = (await response.json().catch(() => null)) as
+      | LiveAvatarApiEnvelope<{ base_url?: string | null }>
+      | null;
+    const baseUrl = payload?.data?.base_url;
+    return typeof baseUrl === "string" && baseUrl.trim() ? baseUrl.trim() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function mintLiveAvatarSessionToken(
   config: LiveAvatarRuntimeConfig,
   fetchFn: typeof fetch = fetch,

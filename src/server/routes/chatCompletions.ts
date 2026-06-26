@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { liveAvatarDiagnosticStore } from "../debug/liveAvatarDiagnosticStore";
+import {
+  buildCallbackRouteProof,
+} from "../debug/routeProof";
 import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
@@ -344,27 +347,35 @@ export async function handleChatCompletionPost(request: Request) {
     const result = processChatCompletion(body, { headerSessionId });
 
     const latencyMs = Date.now() - startedAt;
+    const routeProof = buildCallbackRouteProof({
+      request,
+      stream: wantsStream,
+      latestUserTextLen: requestShape.latest_user_text_len,
+      httpStatus: 200,
+      scenarioContextLoaded: result.x_fsp.grounding?.scenario_context_loaded ?? false,
+      promptSource: result.x_fsp.grounding?.prompt_source ?? null,
+      scenarioId: result.x_fsp.grounding?.scenario_id ?? null,
+      assistantContent: result.choices[0]?.message.content ?? null,
+    });
+
     const logPayload = {
       request_id: requestId,
       received_at: receivedAt,
       status: 200,
       latency_ms: latencyMs,
       request_shape: requestShape,
-      stream: wantsStream,
       correlation: result.x_fsp.correlation.session_id_source,
       session_id_prefix: (result.x_fsp.session_id || "none").slice(0, 8),
       user_text_len: requestShape.latest_user_text_len,
       vad_noop: result.x_fsp.vad_noop ?? false,
       vad_noop_reason: result.x_fsp.vad_noop_reason ?? null,
-      scenario_context_loaded: result.x_fsp.grounding?.scenario_context_loaded ?? false,
-      scenario_id: result.x_fsp.grounding?.scenario_id ?? null,
-      prompt_source: result.x_fsp.grounding?.prompt_source ?? null,
       correlation_method: result.x_fsp.grounding?.correlation_method ?? null,
       ignored_incoming_system_messages:
         result.x_fsp.grounding?.ignored_incoming_system_messages ?? 0,
       has_assistant_content: Boolean(result.choices[0]?.message.content),
       assistant_content_len: result.choices[0]?.message.content?.length ?? 0,
       diagnostic_run_id: diagnosticRunId ?? null,
+      ...routeProof,
     };
 
     console.info("[custom-llm]", logPayload);
@@ -385,6 +396,7 @@ export async function handleChatCompletionPost(request: Request) {
         vad_noop: logPayload.vad_noop,
         roles: requestShape.roles,
         latest_user_content_kind: requestShape.latest_user_content_kind,
+        ...routeProof,
       });
 
     if (diagnosticRunId && !matchedRunIds.includes(diagnosticRunId)) {

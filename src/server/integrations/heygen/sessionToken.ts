@@ -7,7 +7,12 @@ import {
   type HeyGenEnvSnapshot,
   type LiveAvatarInteractivityType,
 } from "./env";
-import { LiveAvatarApiError, mintLiveAvatarSessionToken } from "./liveAvatarApi";
+import { buildRouteProofSnapshot } from "../../debug/routeProof";
+import {
+  fetchLiveAvatarLlmConfigurationBaseUrl,
+  LiveAvatarApiError,
+  mintLiveAvatarSessionToken,
+} from "./liveAvatarApi";
 
 export const CreateHeyGenSessionTokenRequestSchema = z.object({
   fsp_session_id: z.string().uuid(),
@@ -42,6 +47,26 @@ export interface HeyGenSessionTokenSuccessResponse {
     header: "x-fsp-session-id";
     body_fields: ["session_id", "metadata.session_id"];
   };
+  route_proof: ReturnType<typeof buildRouteProofSnapshot>;
+}
+
+export async function enrichHeyGenStatusRouteProof(
+  status: ReturnType<typeof getHeyGenIntegrationStatus>,
+): Promise<ReturnType<typeof getHeyGenIntegrationStatus>> {
+  const runtime = readLiveAvatarRuntimeConfig();
+  if (!runtime) {
+    return status;
+  }
+
+  const llmConfigBaseUrl = await fetchLiveAvatarLlmConfigurationBaseUrl(runtime);
+  return {
+    ...status,
+    route_proof: buildRouteProofSnapshot({
+      llmConfigurationId: runtime.llmConfigurationId,
+      llmConfigBaseUrl: llmConfigBaseUrl,
+      llmEnvSource: status.env.resolvedFrom.llmConfigurationId ?? null,
+    }),
+  };
 }
 
 export function getHeyGenIntegrationStatus(): {
@@ -55,6 +80,7 @@ export function getHeyGenIntegrationStatus(): {
   push_to_talk: "browser_sdk";
   interactivity_type: LiveAvatarInteractivityType;
   env: HeyGenEnvSnapshot;
+  route_proof: ReturnType<typeof buildRouteProofSnapshot>;
   bridge: {
     deployment_target: "vercel";
     custom_llm_url: string | null;
@@ -66,6 +92,10 @@ export function getHeyGenIntegrationStatus(): {
 } {
   const env = readHeyGenEnvSnapshot();
   const runtime = readLiveAvatarRuntimeConfig();
+  const routeProof = buildRouteProofSnapshot({
+    llmConfigurationId: runtime?.llmConfigurationId ?? null,
+    llmEnvSource: env.resolvedFrom.llmConfigurationId ?? null,
+  });
   return {
     connected: env.sessionTokenConfigured,
     configured: env.configured,
@@ -78,6 +108,7 @@ export function getHeyGenIntegrationStatus(): {
     interactivity_type:
       runtime?.interactivityType ?? env.runtimeDefaults.INTERACTIVITY_TYPE,
     env,
+    route_proof: routeProof,
     bridge: {
       deployment_target: "vercel",
       custom_llm_url: env.customLlmUrl,
@@ -136,6 +167,9 @@ export async function createHeyGenSessionToken(
     { fspSessionId: parsed.fsp_session_id },
   );
 
+  const llmConfigBaseUrl =
+    await fetchLiveAvatarLlmConfigurationBaseUrl(runtimeConfig);
+
   return {
     status: "ok",
     mode: "FULL",
@@ -148,6 +182,11 @@ export async function createHeyGenSessionToken(
       header: "x-fsp-session-id",
       body_fields: ["session_id", "metadata.session_id"],
     },
+    route_proof: buildRouteProofSnapshot({
+      llmConfigurationId: runtimeConfig.llmConfigurationId,
+      llmConfigBaseUrl,
+      llmEnvSource: runtimeConfig.resolvedFrom.llmConfigurationId,
+    }),
   };
 }
 

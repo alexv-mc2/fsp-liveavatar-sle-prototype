@@ -199,11 +199,33 @@ export class LiveAvatarDiagnosticRun {
   }
 
   buildExportPayload(serverRun?: Record<string, unknown> | null): Record<string, unknown> {
+    const serverEvents = Array.isArray(serverRun?.events)
+      ? (serverRun.events as Array<{ phase?: string; payload?: Record<string, unknown> }>)
+      : [];
+    const callbackEvent = [...serverEvents]
+      .reverse()
+      .find(
+        (event) =>
+          event.phase === "custom_llm_callback" ||
+          event.phase === "custom_llm_result",
+      );
+    const routeProofEvent = [...serverEvents]
+      .reverse()
+      .find((event) => event.payload?.route_proof || event.payload?.route_match != null);
+
     return {
       diagnostic_run_id: this.runId,
       exported_at: new Date().toISOString(),
       client_events: this.localEvents,
       server_run: serverRun ?? null,
+      route_proof:
+        routeProofEvent?.payload ??
+        callbackEvent?.payload ??
+        null,
+      custom_llm_callback:
+        callbackEvent?.payload?.custom_llm_callback_received === true
+          ? callbackEvent.payload
+          : null,
       classification:
         (serverRun?.classification as string | undefined) ??
         null,

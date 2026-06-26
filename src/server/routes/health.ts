@@ -1,10 +1,10 @@
 import { loadScenario } from "../fsp/scenarioLoader";
 import { PROVENANCE_LABELS, SOURCE_STATUS } from "../content/sourceRegister";
-import { getHeyGenIntegrationStatus } from "../integrations/heygen/sessionToken";
+import { getHeyGenIntegrationStatus, enrichHeyGenStatusRouteProof } from "../integrations/heygen/sessionToken";
 
-export function getHealthPayload() {
+export async function getHealthPayload() {
   const scenario = loadScenario();
-  const heygen = getHeyGenIntegrationStatus();
+  const heygen = await enrichHeyGenStatusRouteProof(getHeyGenIntegrationStatus());
   return {
     status: "ok",
     service: "fsp-liveavatar-sle-prototype",
