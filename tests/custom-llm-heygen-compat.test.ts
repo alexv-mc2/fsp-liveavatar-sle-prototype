@@ -211,17 +211,6 @@ describe("Custom LLM HeyGen VAD no-op compatibility", () => {
 });
 
 describe("Custom LLM validation still fails closed", () => {
-  it("returns 400 when stream:true", async () => {
-    const response = await postChat({
-      stream: true,
-      messages: [{ role: "user", content: "Test" }],
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error.code).toBe("streaming_not_implemented");
-  });
-
   it("returns 400 when messages array is missing", async () => {
     const response = await postChat({});
     const body = await response.json();

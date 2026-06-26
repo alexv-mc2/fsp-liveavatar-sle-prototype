@@ -36,7 +36,7 @@ describe("HeyGen placeholder integration", () => {
     expect(body.configured).toBe(false);
     expect(body.mode).toBe("FULL");
     expect(body.custom_llm_path).toBe("/v1/chat/completions");
-    expect(body.streaming).toBe("not_implemented");
+    expect(body.streaming).toBe("openai_sse");
     expect(body.bridge.deployment_target).toBe("vercel");
     expect(body.bridge.session_persistence).toBe("in_memory_deferred_supabase");
     expect(body.env.missing).toContain(HEYGEN_ENV.API_KEY);

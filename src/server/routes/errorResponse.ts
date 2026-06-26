@@ -1,7 +1,6 @@
 import { ZodError } from "zod";
 import { InvalidPhaseTransitionError } from "../fsp/phaseMachine";
 import { SessionNotFoundError } from "../fsp/scenarioState";
-import { UnsupportedStreamingError } from "./chatCompletions";
 import { HeyGenNotConfiguredError } from "../integrations/heygen/errors";
 import { InvalidSessionIdError } from "../integrations/customLlm/correlation";
 
@@ -54,19 +53,6 @@ export function toHttpError(error: unknown): HttpErrorPayload {
           message: error.message,
           type: "state_conflict",
           code: "invalid_phase_transition",
-        },
-      },
-    };
-  }
-
-  if (error instanceof UnsupportedStreamingError) {
-    return {
-      status: 400,
-      body: {
-        error: {
-          message: error.message,
-          type: "invalid_request_error",
-          code: "streaming_not_implemented",
         },
       },
     };
