@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { liveAvatarDiagnosticStore } from "../debug/liveAvatarDiagnosticStore";
 import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
@@ -244,23 +245,74 @@ export function processChatCompletion(
 }
 
 export async function handleChatCompletionPost(request: Request) {
+  const requestId = crypto.randomUUID().slice(0, 8);
+  const receivedAt = new Date().toISOString();
+
   try {
     const body = await request.json();
-    const result = processChatCompletion(body, {
-      headerSessionId: request.headers.get("x-fsp-session-id") ?? undefined,
-    });
-    console.info("[custom-llm]", {
+    const headerSessionId = request.headers.get("x-fsp-session-id") ?? undefined;
+    const result = processChatCompletion(body, { headerSessionId });
+
+    const userPreview =
+      typeof body === "object" &&
+      body !== null &&
+      Array.isArray((body as { messages?: unknown[] }).messages)
+        ? contentToText(
+            [...(body as { messages: z.infer<typeof ChatMessageSchema>[] }).messages]
+              .reverse()
+              .find((message) => message.role === "user")?.content ?? "",
+          ).slice(0, 80)
+        : "";
+
+    const logPayload = {
+      request_id: requestId,
+      received_at: receivedAt,
       status: 200,
       correlation: result.x_fsp.correlation.session_id_source,
-      messageCount: Array.isArray((body as { messages?: unknown[] }).messages)
+      session_id_prefix: result.x_fsp.session_id.slice(0, 8),
+      message_count: Array.isArray((body as { messages?: unknown[] }).messages)
         ? (body as { messages: unknown[] }).messages.length
         : 0,
+      user_preview_len: userPreview.length,
+      has_assistant_content: Boolean(result.choices[0]?.message.content),
+      active_diagnostic_runs: liveAvatarDiagnosticStore
+        .getActiveRuns()
+        .map((run) => run.runId),
+    };
+
+    console.info("[custom-llm]", logPayload);
+
+    liveAvatarDiagnosticStore.recordCustomLlmCallback({
+      request_id: requestId,
+      received_at: receivedAt,
+      status: 200,
+      correlation: result.x_fsp.correlation.session_id_source,
+      message_count: logPayload.message_count,
+      user_preview_len: logPayload.user_preview_len,
+      has_assistant_content: logPayload.has_assistant_content,
     });
+
     return NextResponse.json(result, {
-      headers: { "x-fsp-session-id": result.x_fsp.session_id },
+      headers: {
+        "x-fsp-session-id": result.x_fsp.session_id,
+        "x-fsp-request-id": requestId,
+      },
     });
   } catch (error) {
     const httpError = toHttpError(error);
+    console.info("[custom-llm]", {
+      request_id: requestId,
+      received_at: receivedAt,
+      status: httpError.status,
+      error_code:
+        typeof httpError.body === "object" &&
+        httpError.body !== null &&
+        "error" in httpError.body &&
+        typeof (httpError.body as { error?: { code?: string } }).error?.code ===
+          "string"
+          ? (httpError.body as { error: { code: string } }).error.code
+          : "unknown",
+    });
     return NextResponse.json(httpError.body, { status: httpError.status });
   }
 }

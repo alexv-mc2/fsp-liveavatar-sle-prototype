@@ -64,7 +64,13 @@ export function parseSessionTokenResponse(
     typeof body.session_token === "string" &&
     typeof body.provider_session_id === "string"
   ) {
-    return { ok: true, data: body as HeyGenSessionTokenOk };
+    return {
+      ok: true,
+      data: {
+        ...(body as HeyGenSessionTokenOk),
+        interactivity_type: body.interactivity_type,
+      },
+    };
   }
 
   return {

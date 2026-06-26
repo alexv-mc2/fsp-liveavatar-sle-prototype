@@ -5,6 +5,7 @@ import {
   readHeyGenEnvSnapshot,
   readLiveAvatarRuntimeConfig,
   type HeyGenEnvSnapshot,
+  type LiveAvatarInteractivityType,
 } from "./env";
 import { LiveAvatarApiError, mintLiveAvatarSessionToken } from "./liveAvatarApi";
 
@@ -36,6 +37,7 @@ export interface HeyGenSessionTokenSuccessResponse {
   provider_session_id: string;
   session_token: string;
   custom_llm_url: string | null;
+  interactivity_type: "PUSH_TO_TALK" | "CONVERSATIONAL";
   correlation: {
     header: "x-fsp-session-id";
     body_fields: ["session_id", "metadata.session_id"];
@@ -51,6 +53,7 @@ export function getHeyGenIntegrationStatus(): {
   custom_llm_compat_path: "/chat/completions";
   streaming: "not_implemented";
   push_to_talk: "browser_sdk";
+  interactivity_type: LiveAvatarInteractivityType;
   env: HeyGenEnvSnapshot;
   bridge: {
     deployment_target: "vercel";
@@ -71,6 +74,7 @@ export function getHeyGenIntegrationStatus(): {
     custom_llm_compat_path: "/chat/completions",
     streaming: "not_implemented",
     push_to_talk: "browser_sdk",
+    interactivity_type: env.runtimeDefaults.INTERACTIVITY_TYPE,
     env,
     bridge: {
       deployment_target: "vercel",
@@ -136,6 +140,7 @@ export async function createHeyGenSessionToken(
     provider_session_id: minted.sessionId,
     session_token: minted.sessionToken,
     custom_llm_url: runtimeConfig.customLlmUrl,
+    interactivity_type: runtimeConfig.interactivityType,
     correlation: {
       header: "x-fsp-session-id",
       body_fields: ["session_id", "metadata.session_id"],

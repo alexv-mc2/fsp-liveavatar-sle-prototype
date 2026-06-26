@@ -105,6 +105,15 @@ describe("LiveAvatar env resolution", () => {
     expect(runtime?.maxSessionSeconds).toBe(LIVEAVATAR_DEFAULTS.MAX_SESSION_SECONDS);
     expect(runtime?.sandbox).toBe(LIVEAVATAR_DEFAULTS.SANDBOX);
   });
+
+  it("honors LIVEAVATAR_INTERACTIVITY_TYPE=CONVERSATIONAL", () => {
+    setConfiguredLiveAvatarEnv(false);
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.INTERACTIVITY_TYPE] = "CONVERSATIONAL";
+    const runtime = readLiveAvatarRuntimeConfig();
+    expect(runtime?.interactivityType).toBe("CONVERSATIONAL");
+    const body = buildCreateSessionTokenBody(runtime!);
+    expect(body.interactivity_type).toBe("CONVERSATIONAL");
+  });
 });
 
 describe("LiveAvatar session token request body", () => {

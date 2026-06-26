@@ -1,3 +1,5 @@
+export type LiveAvatarInteractivityMode = "PUSH_TO_TALK" | "CONVERSATIONAL";
+
 export type LiveAvatarUiState =
   | "unconfigured"
   | "idle"
@@ -11,10 +13,13 @@ export type HeyGenBridgeStatus = {
   session_token_configured: boolean;
   mode: "FULL";
   push_to_talk: string;
+  interactivity_type?: LiveAvatarInteractivityMode;
   env: {
     sessionTokenConfigured: boolean;
     runtimeDefaults: {
-      INTERACTIVITY_TYPE: "PUSH_TO_TALK" | "CONVERSATIONAL";
+      INTERACTIVITY_TYPE: LiveAvatarInteractivityMode;
+      SANDBOX?: boolean;
+      MAX_SESSION_SECONDS?: number;
     };
   };
 };
@@ -24,6 +29,7 @@ export type HeyGenSessionTokenOk = {
   session_token: string;
   provider_session_id: string;
   fsp_session_id: string;
+  interactivity_type?: LiveAvatarInteractivityMode;
 };
 
 export type HeyGenSessionTokenNotConfigured = {

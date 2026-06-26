@@ -44,6 +44,10 @@ function shortId(id: string): string {
   return `${id.slice(0, 8)}…`;
 }
 
+function interactivityLabel(mode: "PUSH_TO_TALK" | "CONVERSATIONAL"): string {
+  return mode === "CONVERSATIONAL" ? "Konversation" : "Push-to-Talk";
+}
+
 export function LiveAvatarPracticePanel() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [busy, setBusy] = useState(false);
@@ -55,16 +59,23 @@ export function LiveAvatarPracticePanel() {
     providerSessionId,
     errorMessage,
     bridgeReady,
+    interactivityType,
     isPushToTalkActive,
+    isListeningActive,
     streamReady,
+    diagnosticRunId,
+    micPermission,
     createFspSession,
     startLiveAvatar,
     stopSession,
     startPushToTalk,
     stopPushToTalk,
+    startListening,
+    stopListening,
   } = useFspLiveAvatarSession(videoRef);
 
   const displayError = errorMessage ?? localError;
+  const isConversational = interactivityType === "CONVERSATIONAL";
   const canConnect =
     bridgeReady === true &&
     Boolean(fspSessionId) &&
@@ -73,7 +84,10 @@ export function LiveAvatarPracticePanel() {
     uiState !== "stopping";
   const canStop =
     uiState === "connected" || uiState === "starting" || uiState === "error";
-  const canPushToTalk = uiState === "connected" && streamReady;
+  const canPushToTalk =
+    !isConversational && uiState === "connected" && streamReady;
+  const canListenControl =
+    isConversational && uiState === "connected" && streamReady;
 
   async function runAction(action: () => Promise<void>) {
     setLocalError(null);
@@ -94,7 +108,9 @@ export function LiveAvatarPracticePanel() {
       <div className="liveavatar-header">
         <div>
           <div className="eyebrow">FSP SLE · LiveAvatar Prototyp</div>
-          <h2 id="liveavatar-title">Video-Avatar mit Push-to-Talk</h2>
+          <h2 id="liveavatar-title">
+            Video-Avatar · {interactivityLabel(interactivityType)}
+          </h2>
           <p className="muted-copy">
             Erstellt eine FSP-Sitzung, holt ein serverseitiges LiveAvatar-Token und
             startet die WebRTC-Session im Browser. Kein API-Schlüssel im Client.
@@ -104,6 +120,20 @@ export function LiveAvatarPracticePanel() {
           Startseite
         </Link>
       </div>
+
+      {diagnosticRunId ? (
+        <div className="notice notice-info liveavatar-debug-banner">
+          <strong>Diagnose-Lauf:</strong>{" "}
+          <code>{diagnosticRunId}</code>
+          <span className="muted-copy">
+            {" "}
+            · Cursor kann Ereignisse unter{" "}
+            <code>/api/debug/liveavatar/runs/{diagnosticRunId}</code> abrufen.
+            HeyGen kann <code>diagnostic_run_id</code> nicht an Custom LLM
+            weitergeben — Korrelation erfolgt über Lauf-Start/Ende und Server-Logs.
+          </span>
+        </div>
+      ) : null}
 
       <div className="notice notice-warning">
         Unabhängiges Training. Keine offizielle Genehmigung durch die Ärztekammer
@@ -115,7 +145,7 @@ export function LiveAvatarPracticePanel() {
           HeyGen/LiveAvatar ist lokal nicht konfiguriert. Setzen Sie{" "}
           <code>HEYGEN_API_KEY</code>, <code>HEYGEN_LIVEAVATAR_AVATAR_ID</code>,{" "}
           <code>HEYGEN_LIVEAVATAR_LLM_CONFIGURATION_ID</code> und{" "}
-          <code>FSP_PUBLIC_BASE_URL</code> (oder testen Sie auf Vercel Production).
+          <code>FSP_PUBLIC_BASE_URL</code> (oder testen Sie auf Vercel Preview).
         </div>
       ) : null}
 
@@ -123,6 +153,10 @@ export function LiveAvatarPracticePanel() {
         <div>
           <span>Bridge</span>
           <strong>{bridgeReady === null ? "…" : bridgeReady ? "bereit" : "fehlt"}</strong>
+        </div>
+        <div>
+          <span>Modus</span>
+          <strong>{interactivityLabel(interactivityType)}</strong>
         </div>
         <div>
           <span>FSP-Sitzung</span>
@@ -135,6 +169,10 @@ export function LiveAvatarPracticePanel() {
         <div>
           <span>Status</span>
           <span className={statusClass(uiState)}>{statusLabel(uiState)}</span>
+        </div>
+        <div>
+          <span>Mikrofon</span>
+          <strong>{micPermission}</strong>
         </div>
       </div>
 
@@ -169,6 +207,20 @@ export function LiveAvatarPracticePanel() {
         </div>
       </div>
 
+      {isConversational ? (
+        <div className="notice notice-info liveavatar-mode-hint">
+          <strong>Konversationsmodus:</strong> Nach dem Verbinden und wenn Katya
+          sichtbar ist, sprechen Sie frei auf Deutsch — kein Push-to-Talk nötig.
+          Optional können Sie unten „Zuhören starten/stoppen“ nutzen, um explizit
+          Listening-Befehle an HeyGen zu senden.
+        </div>
+      ) : (
+        <div className="notice notice-info liveavatar-mode-hint">
+          <strong>Push-to-Talk:</strong> Halten Sie die Taste während der gesamten
+          Äußerung gedrückt und lassen Sie erst danach los.
+        </div>
+      )}
+
       {displayError ? (
         <div className="notice notice-error" role="alert">
           {displayError}
@@ -196,20 +248,41 @@ export function LiveAvatarPracticePanel() {
           LiveAvatar verbinden
         </button>
 
-        <button
-          type="button"
-          className={`button button-ptt ${isPushToTalkActive ? "button-ptt-active" : ""}`}
-          disabled={busy || !canPushToTalk}
-          onPointerDown={() => void startPushToTalk()}
-          onPointerUp={() => void stopPushToTalk()}
-          onPointerLeave={() => {
-            if (isPushToTalkActive) {
-              void stopPushToTalk();
-            }
-          }}
-        >
-          {isPushToTalkActive ? "Sprechen …" : "Push-to-Talk halten"}
-        </button>
+        {isConversational ? (
+          <>
+            <button
+              type="button"
+              className={`button button-secondary ${isListeningActive ? "button-ptt-active" : ""}`}
+              disabled={busy || !canListenControl || isListeningActive}
+              onClick={() => void startListening()}
+            >
+              Zuhören starten
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={busy || !canListenControl || !isListeningActive}
+              onClick={() => void stopListening()}
+            >
+              Zuhören stoppen
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className={`button button-ptt ${isPushToTalkActive ? "button-ptt-active" : ""}`}
+            disabled={busy || !canPushToTalk}
+            onPointerDown={() => void startPushToTalk()}
+            onPointerUp={() => void stopPushToTalk()}
+            onPointerLeave={() => {
+              if (isPushToTalkActive) {
+                void stopPushToTalk();
+              }
+            }}
+          >
+            {isPushToTalkActive ? "Sprechen …" : "Push-to-Talk halten"}
+          </button>
+        )}
 
         <button
           type="button"
@@ -222,10 +295,9 @@ export function LiveAvatarPracticePanel() {
       </div>
 
       <p className="muted-copy liveavatar-footnote">
-        Bekannte Einschränkung: Session-Tokens werden derzeit ohne{" "}
-        <code>voice_id</code> gemintet (Stimmenbindung ausstehend). Avatar-Gesicht
-        über HeyGen; Patientenantworten über Custom LLM{" "}
-        <code>/v1/chat/completions</code>.
+        Patientenantworten über Custom LLM{" "}
+        <code>/v1/chat/completions</code>. Avatar-Gesicht und Stimme über HeyGen
+        LiveAvatar FULL Mode.
       </p>
     </section>
   );

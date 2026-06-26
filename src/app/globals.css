@@ -343,6 +343,11 @@ h3 {
   line-height: 1.55;
 }
 
+.liveavatar-debug-banner,
+.liveavatar-mode-hint {
+  margin-top: 12px;
+}
+
 .avatar-stream-ready .liveavatar-video-placeholder {
   display: none;
 }
@@ -351,6 +356,12 @@ h3 {
   border-color: #ead6aa;
   color: var(--warning);
   background: var(--warning-bg);
+}
+
+.notice-info {
+  border-color: #b8d4f0;
+  color: #1a4a7a;
+  background: #eef6fd;
 }
 
 .notice-error {
