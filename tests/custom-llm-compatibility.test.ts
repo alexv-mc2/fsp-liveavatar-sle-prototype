@@ -102,26 +102,6 @@ describe("Custom LLM validation and streaming", () => {
     expect(response.status).toBe(400);
     expect(body.error.code).toBe("streaming_not_implemented");
   });
-
-  it("returns 400 for missing user message", async () => {
-    const response = await postChat({
-      messages: [{ role: "system", content: "context only" }],
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error.code).toBe("missing_user_message");
-  });
-
-  it("returns 400 for empty user message", async () => {
-    const response = await postChat({
-      messages: [{ role: "user", content: "   " }],
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error.code).toBe("empty_user_message");
-  });
 });
 
 describe("Custom LLM safety and mock engine", () => {

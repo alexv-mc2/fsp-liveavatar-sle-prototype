@@ -24,13 +24,6 @@ export class InvalidSessionIdError extends Error {
   }
 }
 
-export class EmptyUserMessageError extends Error {
-  constructor() {
-    super("The latest user message must contain non-empty text.");
-    this.name = "EmptyUserMessageError";
-  }
-}
-
 const UuidSchema = z.string().uuid();
 
 function normalizeSessionId(value: unknown): string | undefined {
