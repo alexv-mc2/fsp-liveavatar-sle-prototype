@@ -23,6 +23,46 @@ function normalize(value: string): string {
     .trim();
 }
 
+const FACT_QUERY_ALIASES: Record<string, string[]> = {
+  chief_fatigue: ["müde", "mued", "erschöpft", "erschoepft", "schwäche", "schwaeche"],
+  timeline_weeks: ["seit wann", "wie lange", "wann angefangen", "bestehen die"],
+  joint_pain_pattern: ["gelenk", "gelenke", "handgelenk", "handschmerz"],
+  morning_stiffness: ["morgensteif", "morgens steif", "steifigkeit"],
+  butterfly_rash: ["ausschlag", "gesicht rot", "schmetterling"],
+  photosensitivity: ["sonne", "sonnenlicht", "lichtempfindlich"],
+  intermittent_fever: ["fieber", "temperatur", "schüttelfrost", "schuettelfrost"],
+  night_sweats: ["nachtschweiß", "nachtschweiss", "nachthemd"],
+  weight_loss: ["abgenommen", "gewicht verloren", "gewichtsverlust", "kilo"],
+  sleep_disturbance: ["schlaf", "durchschlafen", "aufwachen"],
+};
+
+const STOPWORD_TOKENS = new Set([
+  "haben",
+  "habe",
+  "hatte",
+  "nicht",
+  "eine",
+  "einer",
+  "einem",
+  "ihre",
+  "ihren",
+  "meine",
+  "bitte",
+  "schon",
+  "sehr",
+  "auch",
+  "noch",
+  "wird",
+  "waren",
+  "wurde",
+]);
+
+function tokenize(value: string): string[] {
+  return normalize(value)
+    .split(" ")
+    .filter((token) => token.length >= 5 && !STOPWORD_TOKENS.has(token));
+}
+
 function findKeywordMatch(fact: ScenarioFact, normalizedInput: string): string | null {
   for (const keyword of fact.trigger_keywords) {
     const normalizedKeyword = normalize(keyword);
@@ -30,6 +70,21 @@ function findKeywordMatch(fact: ScenarioFact, normalizedInput: string): string |
       return keyword;
     }
   }
+
+  for (const alias of FACT_QUERY_ALIASES[fact.id] ?? []) {
+    const normalizedAlias = normalize(alias);
+    if (normalizedAlias && normalizedInput.includes(normalizedAlias)) {
+      return alias;
+    }
+  }
+
+  const inputTokens = new Set(tokenize(normalizedInput));
+  for (const token of tokenize(fact.answer_de)) {
+    if (inputTokens.has(token)) {
+      return token;
+    }
+  }
+
   return null;
 }
 

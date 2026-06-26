@@ -4,6 +4,7 @@ import { liveAvatarDiagnosticStore } from "../debug/liveAvatarDiagnosticStore";
 import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
+import { buildAuthoritativePatientContext } from "../fsp/promptBuilder";
 import {
   isPatientConversationPhase,
   transitionPhase,
@@ -18,7 +19,6 @@ import type { SerializedSessionState, SleScenario } from "../fsp/types";
 import {
   describeCustomLlmRequestShape,
   HEYGEN_VAD_NOOP_RESPONSE_DE,
-  messageContentToText,
   OpenAIChatCompletionRequestSchema,
   resolveLatestUserMessage,
   type ParsedChatMessage,
@@ -67,6 +67,13 @@ export interface OpenAIChatCompletionResponse {
       session_id_source: SessionIdSource;
       ignored_metadata_keys: string[];
     };
+    grounding: {
+      scenario_context_loaded: boolean;
+      scenario_id: string;
+      prompt_source: "repo_content";
+      correlation_method: SessionIdSource;
+      ignored_incoming_system_messages: number;
+    };
     session: SerializedSessionState;
   };
 }
@@ -87,6 +94,21 @@ function respondToPatientQuestionPhase(
     return nextQuestion;
   }
   return "Danke. Dann warte ich auf die weiteren Untersuchungen.";
+}
+
+function buildGroundingMetadata(
+  scenario: SleScenario,
+  messages: ParsedChatMessage[],
+  correlationSource: SessionIdSource,
+) {
+  const context = buildAuthoritativePatientContext(scenario, messages);
+  return {
+    scenario_context_loaded: context.scenarioContextLoaded,
+    scenario_id: context.scenarioId,
+    prompt_source: context.promptSource,
+    correlation_method: correlationSource,
+    ignored_incoming_system_messages: context.ignoredIncomingSystemMessages,
+  };
 }
 
 function buildVadNoopResponse(
@@ -125,6 +147,11 @@ function buildVadNoopResponse(
         } satisfies SerializedSessionState);
 
   const completionTokens = approximateTokens(filler);
+  const grounding = buildGroundingMetadata(
+    scenario,
+    parsed.messages,
+    correlation.source,
+  );
 
   return {
     id: `chatcmpl-fsp-${crypto.randomUUID()}`,
@@ -156,6 +183,7 @@ function buildVadNoopResponse(
         session_id_source: correlation.source,
         ignored_metadata_keys: correlation.ignoredMetadataKeys,
       },
+      grounding,
       session: serialized,
     },
   };
@@ -175,6 +203,11 @@ export function processChatCompletion(
   const scenario = options.scenario ?? loadScenario();
   const correlation = resolveCustomLlmCorrelation(parsed, options.headerSessionId);
   const userResolution = resolveLatestUserMessage(parsed.messages);
+  const grounding = buildGroundingMetadata(
+    scenario,
+    parsed.messages,
+    correlation.source,
+  );
 
   if (userResolution.kind === "empty") {
     return buildVadNoopResponse(parsed, correlation, userResolution.reason, options);
@@ -232,9 +265,8 @@ export function processChatCompletion(
     guardrail.blocked ? "guardrail" : "text_mock",
   );
 
-  const promptText = parsed.messages
-    .map((message: ParsedChatMessage) => messageContentToText(message.content))
-    .join("\n");
+  const promptEnvelope = buildAuthoritativePatientContext(scenario, parsed.messages);
+  const promptText = [promptEnvelope.systemPromptDe, userText].join("\n");
   const promptTokens = approximateTokens(promptText);
   const completionTokens = approximateTokens(responseDe);
   const serialized = store.serialize(session);
@@ -267,6 +299,7 @@ export function processChatCompletion(
         session_id_source: correlation.source,
         ignored_metadata_keys: correlation.ignoredMetadataKeys,
       },
+      grounding,
       session: serialized,
     },
   };
@@ -323,6 +356,12 @@ export async function handleChatCompletionPost(request: Request) {
       user_text_len: requestShape.latest_user_text_len,
       vad_noop: result.x_fsp.vad_noop ?? false,
       vad_noop_reason: result.x_fsp.vad_noop_reason ?? null,
+      scenario_context_loaded: result.x_fsp.grounding?.scenario_context_loaded ?? false,
+      scenario_id: result.x_fsp.grounding?.scenario_id ?? null,
+      prompt_source: result.x_fsp.grounding?.prompt_source ?? null,
+      correlation_method: result.x_fsp.grounding?.correlation_method ?? null,
+      ignored_incoming_system_messages:
+        result.x_fsp.grounding?.ignored_incoming_system_messages ?? 0,
       has_assistant_content: Boolean(result.choices[0]?.message.content),
       assistant_content_len: result.choices[0]?.message.content?.length ?? 0,
       diagnostic_run_id: diagnosticRunId ?? null,

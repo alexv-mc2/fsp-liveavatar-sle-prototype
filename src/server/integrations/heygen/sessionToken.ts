@@ -133,6 +133,7 @@ export async function createHeyGenSessionToken(
   const minted = await mintLiveAvatarSessionToken(
     runtimeConfig,
     deps.fetchFn ?? fetch,
+    { fspSessionId: parsed.fsp_session_id },
   );
 
   return {

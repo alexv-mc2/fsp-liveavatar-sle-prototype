@@ -40,6 +40,7 @@ export function buildLiveAvatarApiUrl(
 
 export function buildCreateSessionTokenBody(
   config: LiveAvatarRuntimeConfig,
+  options: { fspSessionId?: string } = {},
 ): Record<string, unknown> {
   const avatarPersona: Record<string, string> = {
     language: config.language,
@@ -53,7 +54,7 @@ export function buildCreateSessionTokenBody(
     avatarPersona.voice_id = config.voiceId;
   }
 
-  return {
+  const body: Record<string, unknown> = {
     mode: "FULL",
     avatar_id: config.avatarId,
     is_sandbox: config.sandbox,
@@ -62,6 +63,15 @@ export function buildCreateSessionTokenBody(
     llm_configuration_id: config.llmConfigurationId,
     avatar_persona: avatarPersona,
   };
+
+  if (options.fspSessionId) {
+    body.dynamic_variables = {
+      fsp_session_id: options.fspSessionId,
+      case_id: "fsp-nrw-sle",
+    };
+  }
+
+  return body;
 }
 
 async function parseLiveAvatarResponse<T>(
@@ -92,6 +102,7 @@ async function parseLiveAvatarResponse<T>(
 export async function mintLiveAvatarSessionToken(
   config: LiveAvatarRuntimeConfig,
   fetchFn: typeof fetch = fetch,
+  options: { fspSessionId?: string } = {},
 ): Promise<{ sessionId: string; sessionToken: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(
@@ -110,7 +121,11 @@ export async function mintLiveAvatarSessionToken(
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(buildCreateSessionTokenBody(config)),
+        body: JSON.stringify(
+          buildCreateSessionTokenBody(config, {
+            fspSessionId: options.fspSessionId,
+          }),
+        ),
         cache: "no-store",
         signal: controller.signal,
       },
