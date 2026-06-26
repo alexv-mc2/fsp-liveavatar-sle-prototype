@@ -5,7 +5,7 @@
  */
 
 const deployHost =
-  process.env.PREVIEW_DEPLOY_HOST?.trim() ??
+  process.env.PREVIEW_DEPLOY_HOST?.trim() ||
   "fsp-liveavatar-sle-prototype-alexv-1768-alexv-1768s-projects.vercel.app";
 
 const base = `https://${deployHost}`;
