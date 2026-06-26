@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { liveAvatarDiagnosticStore } from "../debug/liveAvatarDiagnosticStore";
 import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
@@ -15,35 +16,19 @@ import {
 } from "../fsp/scenarioState";
 import type { SerializedSessionState, SleScenario } from "../fsp/types";
 import {
-  EmptyUserMessageError,
+  describeCustomLlmRequestShape,
+  HEYGEN_VAD_NOOP_RESPONSE_DE,
+  messageContentToText,
+  OpenAIChatCompletionRequestSchema,
+  resolveLatestUserMessage,
+  type ParsedChatMessage,
+} from "../integrations/customLlm/messageExtraction";
+import {
   resolveCustomLlmCorrelation,
   type SessionIdSource,
 } from "../integrations/customLlm/correlation";
 
-const MessageContentPartSchema = z
-  .object({
-    type: z.string(),
-    text: z.string().optional(),
-  })
-  .passthrough();
-
-const ChatMessageSchema = z
-  .object({
-    role: z.enum(["system", "developer", "user", "assistant", "tool"]),
-    content: z.union([z.string(), z.array(MessageContentPartSchema)]),
-  })
-  .passthrough();
-
-export const OpenAIChatCompletionRequestSchema = z
-  .object({
-    model: z.string().optional(),
-    messages: z.array(ChatMessageSchema).min(1),
-    stream: z.boolean().optional().default(false),
-    user: z.string().optional(),
-    session_id: z.string().optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .passthrough();
+export { OpenAIChatCompletionRequestSchema } from "../integrations/customLlm/messageExtraction";
 
 export type OpenAIChatCompletionRequest = z.input<
   typeof OpenAIChatCompletionRequestSchema
@@ -71,6 +56,9 @@ export interface OpenAIChatCompletionResponse {
     revealed_fact_ids: string[];
     blocked_fact_ids: string[];
     safety_flag?: string;
+    vad_noop?: boolean;
+    vad_noop_reason?: "missing_user" | "empty_content";
+    session_persisted?: boolean;
     correlation: {
       session_id_source: SessionIdSource;
       ignored_metadata_keys: string[];
@@ -84,37 +72,6 @@ export class UnsupportedStreamingError extends Error {
     super("Streaming is not implemented in the mock v0 endpoint.");
     this.name = "UnsupportedStreamingError";
   }
-}
-
-export class MissingUserMessageError extends Error {
-  constructor() {
-    super("At least one user message is required.");
-    this.name = "MissingUserMessageError";
-  }
-}
-
-function contentToText(content: z.infer<typeof ChatMessageSchema>["content"]): string {
-  if (typeof content === "string") {
-    return content;
-  }
-  return content
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text)
-    .join("\n");
-}
-
-function latestUserMessage(
-  messages: z.infer<typeof ChatMessageSchema>[],
-): string {
-  const latest = [...messages].reverse().find((message) => message.role === "user");
-  if (!latest) {
-    throw new MissingUserMessageError();
-  }
-  const text = contentToText(latest.content).trim();
-  if (!text) {
-    throw new EmptyUserMessageError();
-  }
-  return text;
 }
 
 function approximateTokens(text: string): number {
@@ -135,6 +92,78 @@ function respondToPatientQuestionPhase(
   return "Danke. Dann warte ich auf die weiteren Untersuchungen.";
 }
 
+function buildVadNoopResponse(
+  parsed: z.infer<typeof OpenAIChatCompletionRequestSchema>,
+  correlation: ReturnType<typeof resolveCustomLlmCorrelation>,
+  reason: "missing_user" | "empty_content",
+  options: {
+    store?: InMemorySessionStore;
+    scenario?: SleScenario;
+  },
+): OpenAIChatCompletionResponse {
+  const store = options.store ?? sessionStore;
+  const scenario = options.scenario ?? loadScenario();
+  const filler = HEYGEN_VAD_NOOP_RESPONSE_DE;
+
+  const existingSession = correlation.sessionId
+    ? store.get(correlation.sessionId)
+    : undefined;
+  const sessionId = existingSession?.id ?? correlation.sessionId ?? "";
+  const sessionPersisted = existingSession !== undefined;
+  const serialized =
+    existingSession !== undefined
+      ? store.serialize(existingSession)
+      : ({
+          id: sessionId,
+          caseId: scenario.metadata.id,
+          phase: "patient_opening",
+          revealedFactIds: [],
+          askedChecklistItems: [],
+          transcriptTurns: [],
+          factRevealEvents: [],
+          safetyFlags: [],
+          patientQuestionIndex: 0,
+          startedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } satisfies SerializedSessionState);
+
+  const completionTokens = approximateTokens(filler);
+
+  return {
+    id: `chatcmpl-fsp-${crypto.randomUUID()}`,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: parsed.model ?? "fsp-sle-deterministic-mock-v0",
+    choices: [
+      {
+        index: 0,
+        message: { role: "assistant", content: filler },
+        finish_reason: "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: 0,
+      completion_tokens: completionTokens,
+      total_tokens: completionTokens,
+    },
+    x_fsp: {
+      mock: true,
+      session_id: sessionId,
+      phase: serialized.phase,
+      revealed_fact_ids: [...serialized.revealedFactIds],
+      blocked_fact_ids: [],
+      vad_noop: true,
+      vad_noop_reason: reason,
+      session_persisted: sessionPersisted,
+      correlation: {
+        session_id_source: correlation.source,
+        ignored_metadata_keys: correlation.ignoredMetadataKeys,
+      },
+      session: serialized,
+    },
+  };
+}
+
 export function processChatCompletion(
   input: unknown,
   options: {
@@ -151,10 +180,16 @@ export function processChatCompletion(
   const store = options.store ?? sessionStore;
   const scenario = options.scenario ?? loadScenario();
   const correlation = resolveCustomLlmCorrelation(parsed, options.headerSessionId);
+  const userResolution = resolveLatestUserMessage(parsed.messages);
+
+  if (userResolution.kind === "empty") {
+    return buildVadNoopResponse(parsed, correlation, userResolution.reason, options);
+  }
+
   const session = correlation.sessionId
     ? store.require(correlation.sessionId)
     : store.create(scenario);
-  const userText = latestUserMessage(parsed.messages);
+  const userText = userResolution.text;
 
   if (session.phase === "patient_opening") {
     transitionPhase(session, "anamnesis_active", scenario, store);
@@ -204,7 +239,7 @@ export function processChatCompletion(
   );
 
   const promptText = parsed.messages
-    .map((message) => contentToText(message.content))
+    .map((message: ParsedChatMessage) => messageContentToText(message.content))
     .join("\n");
   const promptTokens = approximateTokens(promptText);
   const completionTokens = approximateTokens(responseDe);
@@ -244,16 +279,71 @@ export function processChatCompletion(
 }
 
 export async function handleChatCompletionPost(request: Request) {
+  const requestId = crypto.randomUUID().slice(0, 8);
+  const receivedAt = new Date().toISOString();
+  let requestShape: ReturnType<typeof describeCustomLlmRequestShape> | undefined;
+
   try {
     const body = await request.json();
-    const result = processChatCompletion(body, {
-      headerSessionId: request.headers.get("x-fsp-session-id") ?? undefined,
+    requestShape = describeCustomLlmRequestShape(body);
+    const headerSessionId = request.headers.get("x-fsp-session-id") ?? undefined;
+    const result = processChatCompletion(body, { headerSessionId });
+
+    const logPayload = {
+      request_id: requestId,
+      received_at: receivedAt,
+      status: 200,
+      request_shape: requestShape,
+      correlation: result.x_fsp.correlation.session_id_source,
+      session_id_prefix: (result.x_fsp.session_id || "none").slice(0, 8),
+      user_text_len: requestShape.latest_user_text_len,
+      vad_noop: result.x_fsp.vad_noop ?? false,
+      vad_noop_reason: result.x_fsp.vad_noop_reason ?? null,
+      has_assistant_content: Boolean(result.choices[0]?.message.content),
+      active_diagnostic_runs: liveAvatarDiagnosticStore
+        .getActiveRuns()
+        .map((run) => run.runId),
+    };
+
+    console.info("[custom-llm]", logPayload);
+
+    liveAvatarDiagnosticStore.recordCustomLlmCallback({
+      request_id: requestId,
+      received_at: receivedAt,
+      status: 200,
+      correlation: result.x_fsp.correlation.session_id_source,
+      message_count: requestShape.message_count,
+      user_preview_len: requestShape.latest_user_text_len,
+      has_assistant_content: logPayload.has_assistant_content,
+      vad_noop: logPayload.vad_noop,
     });
+
+    const responseHeaders: Record<string, string> = {
+      "x-fsp-request-id": requestId,
+    };
+    if (result.x_fsp.session_persisted !== false && result.x_fsp.session_id) {
+      responseHeaders["x-fsp-session-id"] = result.x_fsp.session_id;
+    }
+
     return NextResponse.json(result, {
-      headers: { "x-fsp-session-id": result.x_fsp.session_id },
+      headers: responseHeaders,
     });
   } catch (error) {
     const httpError = toHttpError(error);
+    console.info("[custom-llm]", {
+      request_id: requestId,
+      received_at: receivedAt,
+      status: httpError.status,
+      request_shape: requestShape,
+      error_code:
+        typeof httpError.body === "object" &&
+        httpError.body !== null &&
+        "error" in httpError.body &&
+        typeof (httpError.body as { error?: { code?: string } }).error?.code ===
+          "string"
+          ? (httpError.body as { error: { code: string } }).error.code
+          : "unknown",
+    });
     return NextResponse.json(httpError.body, { status: httpError.status });
   }
 }

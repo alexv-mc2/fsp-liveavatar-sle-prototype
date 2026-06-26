@@ -18,20 +18,25 @@ export function StartScreen() {
           </div>
           <div>
             <span>Interaktion</span>
-            <strong>Textbasierter Push-to-Talk-Mock</strong>
+            <strong>Text-Mock oder LiveAvatar Push-to-Talk</strong>
           </div>
           <div>
             <span>Avatar</span>
-            <strong>HeyGen-Schnittstelle vorbereitet, nicht verbunden</strong>
+            <strong>LiveAvatar Browser-Slice verfügbar</strong>
           </div>
         </div>
         <div className="notice notice-warning">
           Unabhängiges Training. Keine offizielle Genehmigung oder Bewertung durch
           die Ärztekammer Nordrhein. Keine medizinische Beratung.
         </div>
-        <Link className="button button-primary button-large" href="/simulation">
-          Zur Einwilligung und Simulation
-        </Link>
+        <div className="landing-actions">
+          <Link className="button button-primary button-large" href="/simulation">
+            Zur Einwilligung und Simulation
+          </Link>
+          <Link className="button button-secondary button-large" href="/liveavatar">
+            LiveAvatar-Übung (Video)
+          </Link>
+        </div>
       </section>
     </main>
   );

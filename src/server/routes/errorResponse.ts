@@ -1,15 +1,9 @@
 import { ZodError } from "zod";
 import { InvalidPhaseTransitionError } from "../fsp/phaseMachine";
 import { SessionNotFoundError } from "../fsp/scenarioState";
-import {
-  MissingUserMessageError,
-  UnsupportedStreamingError,
-} from "./chatCompletions";
+import { UnsupportedStreamingError } from "./chatCompletions";
 import { HeyGenNotConfiguredError } from "../integrations/heygen/errors";
-import {
-  EmptyUserMessageError,
-  InvalidSessionIdError,
-} from "../integrations/customLlm/correlation";
+import { InvalidSessionIdError } from "../integrations/customLlm/correlation";
 
 export interface HttpErrorPayload {
   status: number;
@@ -73,32 +67,6 @@ export function toHttpError(error: unknown): HttpErrorPayload {
           message: error.message,
           type: "invalid_request_error",
           code: "streaming_not_implemented",
-        },
-      },
-    };
-  }
-
-  if (error instanceof MissingUserMessageError) {
-    return {
-      status: 400,
-      body: {
-        error: {
-          message: error.message,
-          type: "invalid_request_error",
-          code: "missing_user_message",
-        },
-      },
-    };
-  }
-
-  if (error instanceof EmptyUserMessageError) {
-    return {
-      status: 400,
-      body: {
-        error: {
-          message: error.message,
-          type: "invalid_request_error",
-          code: "empty_user_message",
         },
       },
     };

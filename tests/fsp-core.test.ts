@@ -135,13 +135,12 @@ describe("OpenAI-compatible route", () => {
     expect(typeof body.x_fsp.session_id).toBe("string");
   });
 
-  it("returns 400 when no user message is present", async () => {
+  it("returns 400 when messages array is missing", async () => {
     const request = new Request("http://localhost/v1/chat/completions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         model: "fsp-sle-test",
-        messages: [{ role: "system", content: "Only system context." }],
       }),
     });
 
@@ -149,7 +148,7 @@ describe("OpenAI-compatible route", () => {
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error.code).toBe("missing_user_message");
+    expect(body.error.code).toBe("validation_error");
   });
 });
 
