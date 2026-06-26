@@ -27,6 +27,10 @@ import {
   resolveCustomLlmCorrelation,
   type SessionIdSource,
 } from "../integrations/customLlm/correlation";
+import {
+  encodeOpenAiStreamingBody,
+  OPENAI_STREAMING_HEADERS,
+} from "../integrations/customLlm/streamingResponse";
 
 export { OpenAIChatCompletionRequestSchema } from "../integrations/customLlm/messageExtraction";
 
@@ -65,13 +69,6 @@ export interface OpenAIChatCompletionResponse {
     };
     session: SerializedSessionState;
   };
-}
-
-export class UnsupportedStreamingError extends Error {
-  constructor() {
-    super("Streaming is not implemented in the mock v0 endpoint.");
-    this.name = "UnsupportedStreamingError";
-  }
 }
 
 function approximateTokens(text: string): number {
@@ -173,9 +170,6 @@ export function processChatCompletion(
   } = {},
 ): OpenAIChatCompletionResponse {
   const parsed = OpenAIChatCompletionRequestSchema.parse(input);
-  if (parsed.stream) {
-    throw new UnsupportedStreamingError();
-  }
 
   const store = options.store ?? sessionStore;
   const scenario = options.scenario ?? loadScenario();
@@ -309,6 +303,11 @@ export async function handleChatCompletionPost(request: Request) {
       );
     }
 
+    const wantsStream =
+      typeof body === "object" &&
+      body !== null &&
+      (body as { stream?: unknown }).stream === true;
+
     const result = processChatCompletion(body, { headerSessionId });
 
     const latencyMs = Date.now() - startedAt;
@@ -318,6 +317,7 @@ export async function handleChatCompletionPost(request: Request) {
       status: 200,
       latency_ms: latencyMs,
       request_shape: requestShape,
+      stream: wantsStream,
       correlation: result.x_fsp.correlation.session_id_source,
       session_id_prefix: (result.x_fsp.session_id || "none").slice(0, 8),
       user_text_len: requestShape.latest_user_text_len,
@@ -379,6 +379,16 @@ export async function handleChatCompletionPost(request: Request) {
     };
     if (result.x_fsp.session_persisted !== false && result.x_fsp.session_id) {
       responseHeaders["x-fsp-session-id"] = result.x_fsp.session_id;
+    }
+
+    if (wantsStream) {
+      return new Response(encodeOpenAiStreamingBody(result), {
+        status: 200,
+        headers: {
+          ...OPENAI_STREAMING_HEADERS,
+          ...responseHeaders,
+        },
+      });
     }
 
     return NextResponse.json(result, {

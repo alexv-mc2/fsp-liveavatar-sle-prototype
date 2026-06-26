@@ -91,19 +91,6 @@ describe("Custom LLM session correlation", () => {
   });
 });
 
-describe("Custom LLM validation and streaming", () => {
-  it("returns 400 when stream:true", async () => {
-    const response = await postChat({
-      stream: true,
-      messages: [{ role: "user", content: "Test" }],
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error.code).toBe("streaming_not_implemented");
-  });
-});
-
 describe("Custom LLM safety and mock engine", () => {
   it("blocks lab values in patient phase", async () => {
     const session = store.create(scenario);

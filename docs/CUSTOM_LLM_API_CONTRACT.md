@@ -55,13 +55,21 @@ Unknown `metadata` keys (e.g. provider payloads) are **ignored** and never persi
 | `missing_user_message` | No `user` role message |
 | `empty_user_message` | Latest user message is whitespace-only |
 | `invalid_session_id` | Correlation field present but not a UUID |
-| `streaming_not_implemented` | `stream: true` |
 
 ### Streaming
 
-`stream: true` is rejected with **400** (`streaming_not_implemented`). SSE contract is TODO for a future spike.
+When `stream: true`, the handler runs the same FSP/SLE scenario logic as non-streaming requests and returns **200** with `Content-Type: text/event-stream` (OpenAI-compatible SSE):
 
-## Response (200)
+1. `chat.completion.chunk` with `delta.role: assistant` and empty `delta.content`
+2. `chat.completion.chunk` with `delta.content` set to the full assistant text
+3. `chat.completion.chunk` with `finish_reason: stop`
+4. `data: [DONE]`
+
+VAD no-op (empty/missing user content) streams the German filler phrase instead of returning 400.
+
+Non-streaming (`stream: false` or omitted) continues to return JSON `chat.completion` with `x_fsp` extension.
+
+## Response (200, non-streaming)
 
 OpenAI-shaped JSON plus FSP extension:
 

@@ -51,7 +51,7 @@ export function getHeyGenIntegrationStatus(): {
   mode: "FULL";
   custom_llm_path: "/v1/chat/completions";
   custom_llm_compat_path: "/chat/completions";
-  streaming: "not_implemented";
+  streaming: "openai_sse";
   push_to_talk: "browser_sdk";
   interactivity_type: LiveAvatarInteractivityType;
   env: HeyGenEnvSnapshot;
@@ -73,7 +73,7 @@ export function getHeyGenIntegrationStatus(): {
     mode: "FULL",
     custom_llm_path: "/v1/chat/completions",
     custom_llm_compat_path: "/chat/completions",
-    streaming: "not_implemented",
+    streaming: "openai_sse",
     push_to_talk: "browser_sdk",
     interactivity_type:
       runtime?.interactivityType ?? env.runtimeDefaults.INTERACTIVITY_TYPE,
