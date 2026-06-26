@@ -28,7 +28,7 @@ const JARGON_TERMS = [
 ];
 
 const EXAMINER_ONLY_PATTERNS: Array<{ pattern: RegExp; intent: string }> = [
-  { pattern: /\b(lupus|sle|systemischer lupus)\b.*\?(.*|$)/i, intent: "diagnosis.hidden" },
+  { pattern: /\b(lupus|sle|systemischer lupus)\b/i, intent: "diagnosis.hidden" },
   { pattern: /\b(ist das|haben sie).*(lupus|rheuma bekannt|sle)\b/i, intent: "diagnosis.hidden" },
   { pattern: /\b(eular|acr|klassifikation|klassifikationspunkte|punkte haben sie)\b/i, intent: "classification" },
   { pattern: /\b(ana|anti[- ]?dsdna|anti[- ]?sm|komplement|c3|c4|bsg|crp|kreatinin|upcr|proteinurie)\b/i, intent: "laboratory" },
@@ -40,8 +40,8 @@ const EXAMINER_ONLY_PATTERNS: Array<{ pattern: RegExp; intent: string }> = [
 
 const LEADING_MARKERS = [
   /\bsie haben (?:doch )?(?:bestimmt|sicher|wahrscheinlich)\b/i,
-  /\bbestimmt\b.+\bor\?/i,
-  /\bwahrscheinlich\b.+\bor\?/i,
+  /\bbestimmt\b.+\boder\s*\?/i,
+  /\bwahrscheinlich\b.+\boder\s*\?/i,
 ];
 
 const VAGUE_ONLY_PATTERNS: Array<{ pattern: RegExp; clarifyKey: string }> = [

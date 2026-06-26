@@ -208,7 +208,7 @@ facts:
     category: gynecology
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["schwanger", "kinderwunsch", "schwangerschaft", "fehlgeburt", "weitere kind"]
+    trigger_keywords: ["schwanger", "kinderwunsch", "schwangerschaft", "weitere kind"]
     answer_de: "Schwanger bin ich nicht. Wir könnten uns nächstes Jahr noch ein Kind vorstellen. Eine Fehlgeburt hatte ich nicht."
     checklist_item: gynecological_history
     source_status: "[PROTOTYPE][REVIEW]"
@@ -310,7 +310,7 @@ facts:
     category: gastrointestinal
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["bauchschmerz", "bauchschmerzen", "übelkeit", "uebelkeit", "erbrechen", "durchfall", "bauch krampf", "appetitlos"]
+    trigger_keywords: ["bauchschmerz", "bauchschmerzen", "übelkeit", "uebelkeit", "erbrechen", "bauch krampf", "appetitlos"]
     answer_de: "Nein, Bauchschmerzen, Übelkeit, Erbrechen oder Durchfall habe ich nicht bemerkt."
     source_status: "[PROTOTYPE]"
 

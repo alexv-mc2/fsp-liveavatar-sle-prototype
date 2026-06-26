@@ -21,7 +21,7 @@ const FACT_QUERY_ALIASES: Record<string, string[]> = {
   oral_ulcers_negative: ["aphthe", "mundgeschwur", "nasengeschwur", "geschwur im mund"],
   hair_loss_negative: ["haarausfall", "haare ausgefallen"],
   raynaud_negative: ["raynaud", "kalte finger", "weisse finger", "weisse finger", "blau"],
-  gi_symptoms_negative: ["bauchschmerz", "ubelkeit", "uebelkeit", "durchfall", "erbrechen"],
+  gi_symptoms_negative: ["bauchschmerz", "ubelkeit", "uebelkeit", "erbrechen"],
   travel_none: ["ausland", "reise", "tropen", "im urlaub"],
 };
 

@@ -81,13 +81,12 @@ function buildBroadResponse(
 
 function applyFactReveal(
   session: SessionState,
-  matches: Array<{ fact: { id: string; checklist_item?: string } }>,
-  keyword: string,
+  matches: Array<{ fact: { id: string; checklist_item?: string }; keyword: string }>,
 ): string[] {
   const now = new Date().toISOString();
   const newlyRevealed: string[] = [];
 
-  for (const { fact } of matches) {
+  for (const { fact, keyword } of matches) {
     if (!session.revealedFactIds.has(fact.id)) {
       session.revealedFactIds.add(fact.id);
       newlyRevealed.push(fact.id);
@@ -319,11 +318,7 @@ export function resolvePatientResponse(
     }
   }
 
-  const newlyRevealed = applyFactReveal(
-    session,
-    surfaced,
-    surfaced[0]?.keyword ?? "",
-  );
+  const newlyRevealed = applyFactReveal(session, surfaced);
 
   const hasNegative = surfaced.some((m) =>
     /\b(nein|kein|keine|nicht)\b/i.test(m.fact.answer_de),
