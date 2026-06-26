@@ -31,10 +31,31 @@ export function correlateCustomLlmToRuns(
     }
   }
 
+  if (payload.fsp_session_id_prefix) {
+    const matched = active.filter(
+      (run) => run.fspSessionIdPrefix === payload.fsp_session_id_prefix,
+    );
+    if (matched.length > 0) {
+      return { runIds: matched.map((run) => run.runId), method: "fsp_session_id" };
+    }
+  }
+
   if (payload.provider_session_id) {
     const providerPrefix = payload.provider_session_id.slice(0, 8);
     const matched = active.filter(
       (run) => run.providerSessionIdPrefix === providerPrefix,
+    );
+    if (matched.length > 0) {
+      return {
+        runIds: matched.map((run) => run.runId),
+        method: "provider_session_id",
+      };
+    }
+  }
+
+  if (payload.provider_session_id_prefix) {
+    const matched = active.filter(
+      (run) => run.providerSessionIdPrefix === payload.provider_session_id_prefix,
     );
     if (matched.length > 0) {
       return {

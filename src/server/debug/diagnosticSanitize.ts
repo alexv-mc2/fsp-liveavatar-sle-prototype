@@ -1,6 +1,16 @@
 const SECRET_KEY_PATTERN =
   /secret|token|api[_-]?key|authorization|password|bearer/i;
 
+function sanitizeStringValue(key: string, value: string): string {
+  if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) {
+    return `[jwt:${value.length}]`;
+  }
+  if (SECRET_KEY_PATTERN.test(key)) {
+    return "[redacted]";
+  }
+  return value.length > 120 ? `${value.slice(0, 8)}…(${value.length})` : value;
+}
+
 export function sanitizeDiagnosticPayload(
   payload: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
@@ -15,16 +25,7 @@ export function sanitizeDiagnosticPayload(
     }
 
     if (typeof value === "string") {
-      if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) {
-        out[key] = `[jwt:${value.length}]`;
-        continue;
-      }
-      if (SECRET_KEY_PATTERN.test(key)) {
-        out[key] = "[redacted]";
-        continue;
-      }
-      out[key] =
-        value.length > 120 ? `${value.slice(0, 8)}…(${value.length})` : value;
+      out[key] = sanitizeStringValue(key, value);
       continue;
     }
 
@@ -34,11 +35,15 @@ export function sanitizeDiagnosticPayload(
     }
 
     if (Array.isArray(value)) {
-      out[key] = value.slice(0, 10).map((item) =>
-        typeof item === "object" && item !== null
-          ? sanitizeDiagnosticPayload(item as Record<string, unknown>)
-          : item,
-      );
+      out[key] = value.slice(0, 10).map((item) => {
+        if (typeof item === "string") {
+          return sanitizeStringValue(key, item);
+        }
+        if (typeof item === "object" && item !== null) {
+          return sanitizeDiagnosticPayload(item as Record<string, unknown>);
+        }
+        return item;
+      });
       continue;
     }
 

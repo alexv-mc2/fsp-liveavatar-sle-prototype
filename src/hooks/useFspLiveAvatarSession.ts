@@ -264,6 +264,8 @@ export function useFspLiveAvatarSession(
       installPeerConnectionTap();
     }
 
+    let tokenMinted = false;
+
     try {
       if (navigator.permissions?.query) {
         try {
@@ -284,6 +286,7 @@ export function useFspLiveAvatarSession(
       const tokenPayload = await requestHeyGenSessionToken(fspSessionId, fetch, {
         diagnosticRunId: diagnosticRef.current?.runId,
       });
+      tokenMinted = true;
       const mintedMode =
         tokenPayload.interactivity_type ?? interactivityType;
       setInteractivityType(mintedMode);
@@ -364,6 +367,9 @@ export function useFspLiveAvatarSession(
       });
 
       session.on(SessionEvent.SESSION_DISCONNECTED, (reason) => {
+        void diagnosticRef.current?.log("sdk_disconnected", {
+          reason: String(reason),
+        });
         void diagnosticRef.current?.log("sdk_event", {
           name: "SESSION_DISCONNECTED",
           reason: String(reason),
@@ -401,9 +407,9 @@ export function useFspLiveAvatarSession(
       const message =
         error instanceof Error ? error.message : "Unbekannter Fehler beim Start.";
       await diagnosticRef.current?.log("sdk_start_failure", { message });
-      await diagnosticRef.current?.log("session_token_failure", {
-        message,
-      });
+      if (!tokenMinted) {
+        await diagnosticRef.current?.log("session_token_failure", { message });
+      }
       await logVisibleError(message);
     }
   }, [

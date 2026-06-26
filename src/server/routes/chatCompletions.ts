@@ -284,11 +284,15 @@ export async function handleChatCompletionPost(request: Request) {
   const startedAt = Date.now();
   let requestShape: ReturnType<typeof describeCustomLlmRequestShape> | undefined;
   const diagnosticRunId = request.headers.get("x-fsp-diagnostic-run-id") ?? undefined;
+  let correlationSessionId: string | undefined;
 
   try {
     const body = await request.json();
     requestShape = describeCustomLlmRequestShape(body);
     const headerSessionId = request.headers.get("x-fsp-session-id") ?? undefined;
+    correlationSessionId =
+      headerSessionId ??
+      (typeof body?.session_id === "string" ? body.session_id : undefined);
 
     if (diagnosticRunId) {
       liveAvatarDiagnosticStore.appendEvent(
@@ -406,6 +410,7 @@ export async function handleChatCompletionPost(request: Request) {
       status: httpError.status,
       latency_ms: latencyMs,
       request_shape: requestShape,
+      fsp_session_id: correlationSessionId,
       has_assistant_content: false,
       vad_noop: false,
     });

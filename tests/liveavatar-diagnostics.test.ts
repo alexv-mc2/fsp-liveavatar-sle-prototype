@@ -48,7 +48,9 @@ describe("classifyDiagnosticRun", () => {
     const run = makeRun(
       [
         { ts: "t1", phase: "sdk_start_success" },
-        { ts: "t2", phase: "avatar_speak_started" },
+        { ts: "t2", phase: "stream_ready" },
+        { ts: "t3", phase: "ptt_start" },
+        { ts: "t4", phase: "avatar_speak_started" },
       ],
       true,
     );
@@ -145,13 +147,22 @@ describe("liveAvatarDiagnosticStore", () => {
     expect(matchedRunIds).toEqual(["run00001"]);
   });
 
-  it("is enabled by default unless FSP_LIVEAVATAR_DIAGNOSTICS=0", () => {
-    const original = process.env.FSP_LIVEAVATAR_DIAGNOSTICS;
+  it("is enabled on preview and requires explicit opt-in on production", () => {
+    const originalDiagnostics = process.env.FSP_LIVEAVATAR_DIAGNOSTICS;
+    const originalVercel = process.env.VERCEL_ENV;
+
     delete process.env.FSP_LIVEAVATAR_DIAGNOSTICS;
+    process.env.VERCEL_ENV = "preview";
     expect(isDiagnosticApiEnabled()).toBe(true);
-    process.env.FSP_LIVEAVATAR_DIAGNOSTICS = "0";
+
+    process.env.VERCEL_ENV = "production";
     expect(isDiagnosticApiEnabled()).toBe(false);
-    process.env.FSP_LIVEAVATAR_DIAGNOSTICS = original;
+
+    process.env.FSP_LIVEAVATAR_DIAGNOSTICS = "1";
+    expect(isDiagnosticApiEnabled()).toBe(true);
+
+    process.env.FSP_LIVEAVATAR_DIAGNOSTICS = originalDiagnostics;
+    process.env.VERCEL_ENV = originalVercel;
   });
 });
 

@@ -21,13 +21,19 @@ export async function handleHeyGenSessionTokenPost(request: Request) {
   const requestId = crypto.randomUUID().slice(0, 8);
   const startedAt = Date.now();
   let diagnosticRunId: string | undefined;
-  let body: Record<string, unknown> = {};
+  let rawBody: unknown;
 
   try {
-    body = (await request.json()) as Record<string, unknown>;
-    diagnosticRunId = extractDiagnosticRunId(request, body);
+    rawBody = await request.json();
+    const bodyRecord =
+      rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
+        ? (rawBody as Record<string, unknown>)
+        : {};
+    diagnosticRunId = extractDiagnosticRunId(request, bodyRecord);
     const fspSessionId =
-      typeof body.fsp_session_id === "string" ? body.fsp_session_id : undefined;
+      typeof bodyRecord.fsp_session_id === "string"
+        ? bodyRecord.fsp_session_id
+        : undefined;
 
     if (diagnosticRunId) {
       liveAvatarDiagnosticStore.appendEvent(
@@ -44,7 +50,7 @@ export async function handleHeyGenSessionTokenPost(request: Request) {
       }
     }
 
-    const payload = await createHeyGenSessionToken(body);
+    const payload = await createHeyGenSessionToken(rawBody);
 
     if (payload.status === "not_configured") {
       if (diagnosticRunId) {
@@ -66,7 +72,10 @@ export async function handleHeyGenSessionTokenPost(request: Request) {
           requestId,
         );
       }
-      return NextResponse.json(payload, { status: 503 });
+      return NextResponse.json(payload, {
+        status: 503,
+        headers: { "x-fsp-request-id": requestId },
+      });
     }
 
     const tokenClaims = decodeSessionTokenClaimsSanitized(payload.session_token);

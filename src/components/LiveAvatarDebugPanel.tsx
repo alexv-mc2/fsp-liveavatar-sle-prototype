@@ -17,7 +17,7 @@ const BREAKPOINT_LABELS: Record<DiagnosticBreakpoint, string> = {
   MIC_FAIL: "Microphone permission denied",
   NO_OUTBOUND_AUDIO: "No outbound RTP audio after user spoke",
   NO_LLM_CALLBACK: "HeyGen did not call Custom LLM during run",
-  LLM_400: "Custom LLM returned HTTP 4xx",
+  LLM_400: "Custom LLM returned HTTP 400",
   LLM_200_NO_CONTENT: "Custom LLM 200 but empty assistant content",
   LLM_200_CONTENT_NO_AUDIO: "Custom LLM content but avatar did not speak",
   PLAYBACK_MUTED: "Remote video/audio muted",

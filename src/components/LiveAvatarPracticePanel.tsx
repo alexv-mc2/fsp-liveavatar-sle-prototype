@@ -137,7 +137,11 @@ export function LiveAvatarPracticePanel() {
       ) : null}
 
       {isLiveAvatarDebugEnabled() && diagnosticRunId ? (
-        <LiveAvatarDebugPanel runId={diagnosticRunId} diagnosticRun={diagnosticRun} />
+        <LiveAvatarDebugPanel
+          key={diagnosticRunId}
+          runId={diagnosticRunId}
+          diagnosticRun={diagnosticRun}
+        />
       ) : null}
 
       <div className="notice notice-warning">

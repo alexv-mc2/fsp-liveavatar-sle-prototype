@@ -80,7 +80,7 @@ export function handleDiagnosticAppendEvent(input: unknown) {
     parsed.run_id,
     parsed.phase,
     parsed.payload,
-    parsed.source ?? "client",
+    "client",
     parsed.request_id,
   );
 

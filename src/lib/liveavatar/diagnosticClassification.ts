@@ -38,6 +38,18 @@ function avatarSpoke(run: DiagnosticRun): boolean {
   );
 }
 
+function userEngaged(run: DiagnosticRun): boolean {
+  return (
+    hasPhase(
+      run,
+      "ptt_start",
+      "ptt_stop",
+      "conversational_listening_start",
+      "conversational_listening_stop",
+    ) || llmCallbacks(run).length > 0
+  );
+}
+
 export function classifyDiagnosticRun(run: DiagnosticRun): DiagnosticBreakpoint {
   if (
     hasPhase(
@@ -65,10 +77,6 @@ export function classifyDiagnosticRun(run: DiagnosticRun): DiagnosticBreakpoint 
   const mic = lastPayload(run, "mic_permission");
   if (mic?.state === "denied") {
     return "MIC_FAIL";
-  }
-
-  if (avatarSpoke(run)) {
-    return "AVATAR_RESPONDED";
   }
 
   if (
@@ -107,7 +115,7 @@ export function classifyDiagnosticRun(run: DiagnosticRun): DiagnosticBreakpoint 
     "conversational_listening_stop",
   );
 
-  if (userSpoke && llmEvents.length === 0 && run.endedAt) {
+  if (userSpoke && llmEvents.length === 0 && run.endedAt && !avatarSpoke(run)) {
     return "NO_LLM_CALLBACK";
   }
 
@@ -144,6 +152,10 @@ export function classifyDiagnosticRun(run: DiagnosticRun): DiagnosticBreakpoint 
   );
   if (remoteMuted) {
     return "PLAYBACK_MUTED";
+  }
+
+  if (avatarSpoke(run) && userEngaged(run)) {
+    return "AVATAR_RESPONDED";
   }
 
   if (run.endedAt) {

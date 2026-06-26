@@ -1,7 +1,7 @@
 # LiveAvatar end-to-end diagnostics
 
-Debug runs are enabled on `/liveavatar?fsp_debug=1` in all Vercel environments unless
-`FSP_LIVEAVATAR_DIAGNOSTICS=0`.
+Debug runs are enabled on `/liveavatar?fsp_debug=1` in **Preview** and **local dev** by default.
+On **Production**, set `FSP_LIVEAVATAR_DIAGNOSTICS=1` (unless explicitly disabled with `=0`).
 
 ## Persistence model
 
