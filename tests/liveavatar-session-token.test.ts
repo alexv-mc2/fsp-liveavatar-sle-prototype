@@ -267,4 +267,20 @@ describe("LiveAvatar session token route", () => {
       "context_id_optional_backend_owns_fsp_context",
     );
   });
+
+  it("GET status exposes resolved interactivity_type from env", async () => {
+    setConfiguredLiveAvatarEnv(false, false);
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.INTERACTIVITY_TYPE] = "CONVERSATIONAL";
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.SANDBOX] = "false";
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS] = "300";
+
+    const status = getHeyGenIntegrationStatus();
+    expect(status.interactivity_type).toBe("CONVERSATIONAL");
+    expect(status.env.runtimeResolved).toEqual({
+      INTERACTIVITY_TYPE: "CONVERSATIONAL",
+      SANDBOX: false,
+      MAX_SESSION_SECONDS: 300,
+      LANGUAGE: LIVEAVATAR_DEFAULTS.LANGUAGE,
+    });
+  });
 });

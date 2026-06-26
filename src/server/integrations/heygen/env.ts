@@ -94,6 +94,13 @@ export type HeyGenEnvSnapshot = {
     boolean
   >;
   runtimeDefaults: typeof LIVEAVATAR_DEFAULTS;
+  /** Parsed runtime values when session-token env is complete; null when not configured. */
+  runtimeResolved: {
+    INTERACTIVITY_TYPE: LiveAvatarInteractivityType;
+    MAX_SESSION_SECONDS: number;
+    SANDBOX: boolean;
+    LANGUAGE: string;
+  } | null;
 };
 
 function readTrimmed(name: string): string | undefined {
@@ -245,6 +252,24 @@ export function readHeyGenEnvSnapshot(): HeyGenEnvSnapshot {
     },
     expoWallAliasesPresent: readExpoWallAliasPresence(),
     runtimeDefaults: LIVEAVATAR_DEFAULTS,
+    runtimeResolved: sessionTokenMissing.length
+      ? null
+      : {
+          INTERACTIVITY_TYPE: parseInteractivityType(
+            readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.INTERACTIVITY_TYPE),
+          ),
+          MAX_SESSION_SECONDS: parsePositiveInteger(
+            readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS),
+            LIVEAVATAR_DEFAULTS.MAX_SESSION_SECONDS,
+          ),
+          SANDBOX: parseBoolean(
+            readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.SANDBOX),
+            LIVEAVATAR_DEFAULTS.SANDBOX,
+          ),
+          LANGUAGE:
+            readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.LANGUAGE) ??
+            LIVEAVATAR_DEFAULTS.LANGUAGE,
+        },
   };
 }
 

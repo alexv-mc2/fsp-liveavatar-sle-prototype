@@ -65,6 +65,7 @@ export function getHeyGenIntegrationStatus(): {
   };
 } {
   const env = readHeyGenEnvSnapshot();
+  const runtime = readLiveAvatarRuntimeConfig();
   return {
     connected: env.sessionTokenConfigured,
     configured: env.configured,
@@ -74,7 +75,8 @@ export function getHeyGenIntegrationStatus(): {
     custom_llm_compat_path: "/chat/completions",
     streaming: "not_implemented",
     push_to_talk: "browser_sdk",
-    interactivity_type: env.runtimeDefaults.INTERACTIVITY_TYPE,
+    interactivity_type:
+      runtime?.interactivityType ?? env.runtimeDefaults.INTERACTIVITY_TYPE,
     env,
     bridge: {
       deployment_target: "vercel",

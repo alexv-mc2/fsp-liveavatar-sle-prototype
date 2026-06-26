@@ -102,6 +102,7 @@ export function useFspLiveAvatarSession(
         setBridgeReady(ready);
         setInteractivityType(
           status.interactivity_type ??
+            status.env.runtimeResolved?.INTERACTIVITY_TYPE ??
             status.env.runtimeDefaults.INTERACTIVITY_TYPE ??
             "PUSH_TO_TALK",
         );

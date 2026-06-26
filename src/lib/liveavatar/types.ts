@@ -21,6 +21,11 @@ export type HeyGenBridgeStatus = {
       SANDBOX?: boolean;
       MAX_SESSION_SECONDS?: number;
     };
+    runtimeResolved?: {
+      INTERACTIVITY_TYPE: LiveAvatarInteractivityMode;
+      SANDBOX: boolean;
+      MAX_SESSION_SECONDS: number;
+    } | null;
   };
 };
 
