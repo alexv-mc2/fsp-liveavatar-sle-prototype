@@ -190,7 +190,7 @@ facts:
     category: family_history
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["familienanamnese", "familie krank", "mutter", "vater", "tante", "erblich", "schilddrüse", "schilddruese", "hashimoto", "rheuma"]
+    trigger_keywords: ["familienanamnese", "familie krank", "mutter", "vater", "tante", "erblich", "schilddrüse", "schilddruese", "hashimoto", "rheuma", "krankheiten in der familie", "krankheiten in ihrer familie", "krankheiten in der familie"]
     answer_de: "Meine Mutter hat Hashimoto. Eine Tante mütterlicherseits hat rheumatoide Arthritis, sie sagt einfach Rheuma."
     checklist_item: family_history
     source_status: "[PROTOTYPE]"
@@ -257,6 +257,86 @@ facts:
     answer_de: "In den letzten Wochen hatte ich keine Erkältung, Magen-Darm- oder Blasenentzündung."
     checklist_item: red_flags
     source_status: "[INFERENCE]"
+
+  - id: oral_ulcers_negative
+    category: mucocutaneous
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["aphthe", "aphthen", "mundgeschwür", "mundgeschwuer", "nasengeschwür", "nasengeschwuer", "geschwür im mund", "geschwuer im mund", "wunde stellen im mund"]
+    answer_de: "Nein, wunde Stellen oder Geschwüre im Mund oder in der Nase habe ich nicht bemerkt."
+    source_status: "[PROTOTYPE]"
+
+  - id: hair_loss_negative
+    category: mucocutaneous
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["haarausfall", "haare ausgefallen", "kahle stellen", "haare verlieren"]
+    answer_de: "Nein, auffälligen Haarausfall oder kahle Stellen habe ich nicht bemerkt."
+    source_status: "[PROTOTYPE]"
+
+  - id: raynaud_negative
+    category: vascular
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["raynaud", "kalte finger", "weiße finger", "weisse finger", "blau", "blasse finger", "finger bei kälte", "finger bei kaelt"]
+    answer_de: "Nein, meine Finger werden bei Kälte nicht weiß oder blau und tun dann nicht plötzlich weh."
+    source_status: "[PROTOTYPE]"
+
+  - id: sicca_negative
+    category: mucocutaneous
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["trockene augen", "trockener mund", "sandgefühl", "sandgefuehl", "sicca", "tränen", "traenen"]
+    answer_de: "Nein, auffällig trockene Augen oder ein dauerhaft sehr trockener Mund sind mir nicht aufgefallen."
+    source_status: "[PROTOTYPE]"
+
+  - id: psoriasis_nails_negative
+    category: skin
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["psoriasis", "schuppenflechte", "nagel", "nägel", "naegel", "dactylitis", "wurstfinger"]
+    answer_de: "Nein, Schuppenflechte, auffällige Nagelveränderungen oder geschwollene Finger wie Wurstfinger habe ich nicht."
+    source_status: "[PROTOTYPE]"
+
+  - id: proximal_weakness_negative
+    category: musculoskeletal
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["kraftlos", "proximal", "treppen", "kamm", "arm heben", "muskelschwäche", "muskelschwaeche"]
+    answer_de: "Nein, ich fühle mich zwar müde, aber ich werde nicht plötzlich kraftlos beim Treppensteigen oder Anheben der Arme."
+    source_status: "[PROTOTYPE]"
+
+  - id: gi_symptoms_negative
+    category: gastrointestinal
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["bauchschmerz", "bauchschmerzen", "übelkeit", "uebelkeit", "erbrechen", "durchfall", "bauch krampf", "appetitlos"]
+    answer_de: "Nein, Bauchschmerzen, Übelkeit, Erbrechen oder Durchfall habe ich nicht bemerkt."
+    source_status: "[PROTOTYPE]"
+
+  - id: travel_none
+    category: social_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["ausland", "reise", "tropen", "urlaub", "geimpft", "impfung"]
+    answer_de: "Nein, ich war in letzter Zeit nicht im Ausland."
+    source_status: "[PROTOTYPE]"
+
+  - id: miscarriage_thrombosis_negative
+    category: gynecology
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["fehlgeburt", "abtreibung", "spontanabort", "blutung schwangerschaft"]
+    answer_de: "Nein, eine Fehlgeburt oder Abtreibung hatte ich nicht."
+    source_status: "[PROTOTYPE]"
+
+  - id: pain_quality
+    category: musculoskeletal
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["schmerzart", "wie fühlen", "wie fuehlen", "brennt", "sticht", "drückt", "drueckt", "stärke", "staerke", "skala", "0 bis 10", "wie stark"]
+    answer_de: "Es ist eher ein Ziehen und Steifigkeitsgefühl in den Gelenken, manchmal richtig schmerzhaft. An schlechten Tagen würde ich sagen etwa sechs bis sieben von zehn."
+    source_status: "[PROTOTYPE]"
 
   - id: lab_ana
     category: laboratory

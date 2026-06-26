@@ -78,6 +78,11 @@ export interface OpenAIChatCompletionResponse {
       ignored_incoming_system_messages: number;
     };
     session: SerializedSessionState;
+    patient_behavior?: {
+      response_class: string;
+      intent: string | null;
+      question_quality: string[];
+    };
   };
 }
 
@@ -231,6 +236,9 @@ export function processChatCompletion(
   let responseDe: string;
   let blockedFactIds: string[] = [];
   let safetyFlag: string | undefined;
+  let patientBehavior:
+    | ReturnType<typeof resolveHiddenFacts>["behavior"]
+    | undefined;
 
   if (guardrail.blocked) {
     responseDe = guardrail.responseDe ?? scenario.fallbacks.unknown_de;
@@ -246,6 +254,7 @@ export function processChatCompletion(
     const resolution = resolveHiddenFacts(userText, session, scenario);
     responseDe = resolution.responseDe;
     blockedFactIds = resolution.blockedFactIds;
+    patientBehavior = resolution.behavior;
   }
 
   if (!guardrail.blocked) {
@@ -304,6 +313,13 @@ export function processChatCompletion(
       },
       grounding,
       session: serialized,
+      patient_behavior: patientBehavior
+        ? {
+            response_class: patientBehavior.responseClass,
+            intent: patientBehavior.intent,
+            question_quality: patientBehavior.questionQuality,
+          }
+        : undefined,
     },
   };
 }
