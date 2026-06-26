@@ -5,6 +5,7 @@ import {
   LiveAvatarSession,
   SessionDisconnectReason,
   SessionEvent,
+  SessionInteractivityMode,
   SessionState,
 } from "@heygen/liveavatar-web-sdk";
 import {
@@ -124,7 +125,10 @@ export function useFspLiveAvatarSession(
 
       const session = new LiveAvatarSession(tokenPayload.session_token, {
         apiUrl: LIVEAVATAR_SDK_API_URL,
-        voiceChat: true,
+        voiceChat: {
+          mode: SessionInteractivityMode.PUSH_TO_TALK,
+          defaultMuted: true,
+        },
       });
       sessionRef.current = session;
 
