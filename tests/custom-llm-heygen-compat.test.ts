@@ -83,6 +83,16 @@ describe("Custom LLM message extraction", () => {
     expect(shape.metadata_keys).toContain("session_id");
     expect(JSON.stringify(shape)).not.toContain("secret-context");
   });
+
+  it("tolerates malformed raw messages before schema validation", () => {
+    const shape = describeCustomLlmRequestShape({
+      messages: [null, { role: "user", content: [{ text: 123 }] }, "bad-entry"],
+    });
+
+    expect(shape.message_count).toBe(3);
+    expect(shape.roles).toEqual(["?", "user", "?"]);
+    expect(shape.latest_user_text_len).toBe(0);
+  });
 });
 
 describe("Custom LLM HeyGen VAD no-op compatibility", () => {
@@ -93,6 +103,7 @@ describe("Custom LLM HeyGen VAD no-op compatibility", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-fsp-session-id")).toBeNull();
     expect(body.object).toBe("chat.completion");
     expect(body.choices[0].message.role).toBe("assistant");
     expect(typeof body.choices[0].message.content).toBe("string");
@@ -177,8 +188,25 @@ describe("Custom LLM HeyGen VAD no-op compatibility", () => {
 
     expect(response.status).toBe(200);
     expect(body.x_fsp.vad_noop).toBe(true);
+    expect(body.x_fsp.session_persisted).toBe(true);
     expect(body.x_fsp.session_id).toBe(session.id);
+    expect(response.headers.get("x-fsp-session-id")).toBe(session.id);
     expect(JSON.stringify(body)).not.toContain("provider-ignored");
+  });
+
+  it("omits reusable session header when VAD no-op has no persisted session", async () => {
+    const response = await postChat(
+      {
+        messages: [{ role: "user", content: "" }],
+      },
+      { "x-fsp-session-id": "22222222-2222-4222-8222-222222222222" },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.x_fsp.vad_noop).toBe(true);
+    expect(body.x_fsp.session_persisted).toBe(false);
+    expect(response.headers.get("x-fsp-session-id")).toBeNull();
   });
 });
 

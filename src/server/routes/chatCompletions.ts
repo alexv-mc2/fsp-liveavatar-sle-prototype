@@ -58,6 +58,7 @@ export interface OpenAIChatCompletionResponse {
     safety_flag?: string;
     vad_noop?: boolean;
     vad_noop_reason?: "missing_user" | "empty_content";
+    session_persisted?: boolean;
     correlation: {
       session_id_source: SessionIdSource;
       ignored_metadata_keys: string[];
@@ -107,7 +108,8 @@ function buildVadNoopResponse(
   const existingSession = correlation.sessionId
     ? store.get(correlation.sessionId)
     : undefined;
-  const sessionId = existingSession?.id ?? correlation.sessionId ?? crypto.randomUUID();
+  const sessionId = existingSession?.id ?? correlation.sessionId ?? "";
+  const sessionPersisted = existingSession !== undefined;
   const serialized =
     existingSession !== undefined
       ? store.serialize(existingSession)
@@ -152,6 +154,7 @@ function buildVadNoopResponse(
       blocked_fact_ids: [],
       vad_noop: true,
       vad_noop_reason: reason,
+      session_persisted: sessionPersisted,
       correlation: {
         session_id_source: correlation.source,
         ignored_metadata_keys: correlation.ignoredMetadataKeys,
@@ -292,7 +295,7 @@ export async function handleChatCompletionPost(request: Request) {
       status: 200,
       request_shape: requestShape,
       correlation: result.x_fsp.correlation.session_id_source,
-      session_id_prefix: result.x_fsp.session_id.slice(0, 8),
+      session_id_prefix: (result.x_fsp.session_id || "none").slice(0, 8),
       user_text_len: requestShape.latest_user_text_len,
       vad_noop: result.x_fsp.vad_noop ?? false,
       vad_noop_reason: result.x_fsp.vad_noop_reason ?? null,
@@ -315,11 +318,15 @@ export async function handleChatCompletionPost(request: Request) {
       vad_noop: logPayload.vad_noop,
     });
 
+    const responseHeaders: Record<string, string> = {
+      "x-fsp-request-id": requestId,
+    };
+    if (result.x_fsp.session_persisted !== false && result.x_fsp.session_id) {
+      responseHeaders["x-fsp-session-id"] = result.x_fsp.session_id;
+    }
+
     return NextResponse.json(result, {
-      headers: {
-        "x-fsp-session-id": result.x_fsp.session_id,
-        "x-fsp-request-id": requestId,
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
     const httpError = toHttpError(error);

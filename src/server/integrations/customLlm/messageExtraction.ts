@@ -60,12 +60,16 @@ export type CustomLlmRequestShapeSummary = {
   top_level_keys: string[];
 };
 
-function partToText(part: z.infer<typeof MessageContentPartSchema>): string {
-  if (typeof part.text === "string") {
-    return part.text;
+function safePartToText(part: unknown): string {
+  if (typeof part !== "object" || part === null) {
+    return "";
   }
-  if (typeof part.input_text === "string") {
-    return part.input_text;
+  const record = part as Record<string, unknown>;
+  if (typeof record.text === "string") {
+    return record.text;
+  }
+  if (typeof record.input_text === "string") {
+    return record.input_text;
   }
   return "";
 }
@@ -73,13 +77,20 @@ function partToText(part: z.infer<typeof MessageContentPartSchema>): string {
 export function messageContentToText(
   content: ParsedChatMessage["content"],
 ): string {
+  return safeMessageContentToText(content);
+}
+
+function safeMessageContentToText(content: unknown): string {
   if (typeof content === "string") {
     return content;
   }
   if (content === null || content === undefined) {
     return "";
   }
-  return content.map(partToText).join("\n");
+  if (!Array.isArray(content)) {
+    return "";
+  }
+  return content.map(safePartToText).join("\n");
 }
 
 function normalizeRole(role: unknown): ParsedChatMessage["role"] | null {
@@ -154,16 +165,18 @@ export function describeCustomLlmRequestShape(
   }
 
   const record = body as Record<string, unknown>;
-  const messages = Array.isArray(record.messages)
-    ? (record.messages as ParsedChatMessage[])
-    : [];
+  const rawMessages = Array.isArray(record.messages) ? record.messages : [];
 
   let latestUserIndex: number | null = null;
-  let latestUserContent: ParsedChatMessage["content"];
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (normalizeRole(messages[index]?.role) === "user") {
+  let latestUserContent: unknown;
+  for (let index = rawMessages.length - 1; index >= 0; index -= 1) {
+    const message = rawMessages[index];
+    if (typeof message !== "object" || message === null) {
+      continue;
+    }
+    if (normalizeRole((message as { role?: unknown }).role) === "user") {
       latestUserIndex = index;
-      latestUserContent = messages[index]?.content;
+      latestUserContent = (message as { content?: unknown }).content;
       break;
     }
   }
@@ -174,17 +187,22 @@ export function describeCustomLlmRequestShape(
       : null;
 
   return {
-    message_count: messages.length,
-    roles: messages.slice(0, 12).map((message) => String(message.role ?? "?")),
+    message_count: rawMessages.length,
+    roles: rawMessages.slice(0, 12).map((message) => {
+      if (typeof message === "object" && message !== null && "role" in message) {
+        return String((message as { role?: unknown }).role ?? "?");
+      }
+      return "?";
+    }),
     latest_user_index: latestUserIndex,
     latest_user_content_kind:
       latestUserIndex === null
         ? "missing_user"
-        : contentKind(latestUserContent),
+        : contentKind(latestUserContent as ParsedChatMessage["content"]),
     latest_user_text_len:
       latestUserIndex === null
         ? 0
-        : messageContentToText(latestUserContent).trim().length,
+        : safeMessageContentToText(latestUserContent).trim().length,
     stream: record.stream === true,
     has_session_id: typeof record.session_id === "string",
     has_metadata: metadata !== null,
