@@ -1,11 +1,6 @@
 import type { LiveAvatarSession } from "@heygen/liveavatar-web-sdk";
-import {
-  readOutboundAudioRtp,
-  snapshotLocalAudioTrack,
-  snapshotVoiceChat,
-} from "./pttDiagnostics";
-
-export type LiveAvatarInteractivityMode = "PUSH_TO_TALK" | "CONVERSATIONAL";
+import type { DiagnosticInteractivityMode } from "./diagnosticTypes";
+import { FSP_DIAGNOSTIC_RUN_HEADER } from "./diagnosticTypes";
 
 const DIAGNOSTIC_RUNS_PATH = "/api/debug/liveavatar/runs";
 
@@ -20,26 +15,66 @@ export function isLiveAvatarDebugEnabled(): boolean {
   return new URLSearchParams(window.location.search).has("fsp_debug");
 }
 
+export function diagnosticRequestHeaders(
+  runId: string | null | undefined,
+): Record<string, string> {
+  if (!runId) {
+    return {};
+  }
+  return { [FSP_DIAGNOSTIC_RUN_HEADER]: runId };
+}
+
+export type ClientDiagnosticEvent = {
+  ts: string;
+  phase: string;
+  payload?: Record<string, unknown>;
+};
+
 export class LiveAvatarDiagnosticRun {
   readonly runId: string;
   private ended = false;
+  private readonly localEvents: ClientDiagnosticEvent[] = [];
+  private eventListeners = new Set<(events: ClientDiagnosticEvent[]) => void>();
 
   private constructor(runId: string) {
     this.runId = runId;
   }
 
+  getEvents(): ClientDiagnosticEvent[] {
+    return [...this.localEvents];
+  }
+
+  subscribe(listener: (events: ClientDiagnosticEvent[]) => void): () => void {
+    this.eventListeners.add(listener);
+    listener(this.getEvents());
+    return () => {
+      this.eventListeners.delete(listener);
+    };
+  }
+
   static async start(
-    interactivityType?: LiveAvatarInteractivityMode,
+    interactivityType?: DiagnosticInteractivityMode,
   ): Promise<LiveAvatarDiagnosticRun | null> {
     if (!isLiveAvatarDebugEnabled()) {
       return null;
     }
 
     const runId = generateRunId();
+    const run = new LiveAvatarDiagnosticRun(runId);
+
+    await run.recordLocal("page_load", {
+      path: window.location.pathname,
+      search: window.location.search ? "fsp_debug=1" : "",
+    });
+
     try {
       const response = await fetch(DIAGNOSTIC_RUNS_PATH, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...diagnosticRequestHeaders(runId),
+        },
         body: JSON.stringify({
           run_id: runId,
           interactivity_type: interactivityType,
@@ -47,20 +82,45 @@ export class LiveAvatarDiagnosticRun {
         cache: "no-store",
       });
       if (!response.ok) {
+        await run.recordLocal("run_create_failure", { http_status: response.status });
         console.warn("[fsp-diag] run start failed", response.status);
-        return null;
+        return run;
       }
-      const run = new LiveAvatarDiagnosticRun(runId);
+      await run.recordLocal("run_created", { interactivity_type: interactivityType });
       console.info("[fsp-diag] diagnostic_run_id", runId);
       return run;
     } catch (error) {
+      await run.recordLocal("run_create_failure", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
       console.warn("[fsp-diag] run start error", error);
-      return null;
+      return run;
     }
   }
 
-  async log(phase: string, payload?: Record<string, unknown>): Promise<void> {
+  private notify(): void {
+    const snapshot = this.getEvents();
+    for (const listener of this.eventListeners) {
+      listener(snapshot);
+    }
+  }
+
+  private async recordLocal(
+    phase: string,
+    payload?: Record<string, unknown>,
+  ): Promise<void> {
+    const event: ClientDiagnosticEvent = {
+      ts: new Date().toISOString(),
+      phase,
+      payload,
+    };
+    this.localEvents.push(event);
+    this.notify();
     console.info("[fsp-diag]", phase, payload ?? {});
+  }
+
+  async log(phase: string, payload?: Record<string, unknown>): Promise<void> {
+    await this.recordLocal(phase, payload);
     if (this.ended) {
       return;
     }
@@ -68,16 +128,21 @@ export class LiveAvatarDiagnosticRun {
     try {
       await fetch(DIAGNOSTIC_RUNS_PATH, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...diagnosticRequestHeaders(this.runId),
+        },
         body: JSON.stringify({
           run_id: this.runId,
           phase,
           payload,
+          source: "client",
         }),
         cache: "no-store",
       });
     } catch {
-      // Best-effort diagnostic transport.
+      // Best-effort diagnostic transport; local buffer remains source for export.
     }
   }
 
@@ -86,6 +151,9 @@ export class LiveAvatarDiagnosticRun {
     phase: string,
     video?: HTMLVideoElement | null,
   ): Promise<void> {
+    const { snapshotVoiceChat, snapshotLocalAudioTrack, readOutboundAudioRtp } =
+      await import("./pttDiagnostics");
+
     const voice = snapshotVoiceChat(session.voiceChat);
     const track = snapshotLocalAudioTrack(session);
     const rtp = await readOutboundAudioRtp(session);
@@ -99,7 +167,13 @@ export class LiveAvatarDiagnosticRun {
         }
       : null;
 
-    await this.log(phase, { voice, track, rtp, remote });
+    if (phase.includes("rtp")) {
+      await this.log("outbound_rtp_snapshot", { voice, track, rtp, remote });
+    } else if (phase.includes("audio")) {
+      await this.log("audio_track_snapshot", { voice, track, rtp, remote });
+    } else {
+      await this.log("remote_audio_snapshot", { voice, track, rtp, remote });
+    }
   }
 
   async end(): Promise<void> {
@@ -107,10 +181,15 @@ export class LiveAvatarDiagnosticRun {
       return;
     }
     this.ended = true;
+    await this.log("stop_cleanup");
     try {
       await fetch(DIAGNOSTIC_RUNS_PATH, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...diagnosticRequestHeaders(this.runId),
+        },
         body: JSON.stringify({ action: "end", run_id: this.runId }),
         cache: "no-store",
       });
@@ -118,6 +197,22 @@ export class LiveAvatarDiagnosticRun {
       // Best-effort.
     }
   }
+
+  buildExportPayload(serverRun?: Record<string, unknown> | null): Record<string, unknown> {
+    return {
+      diagnostic_run_id: this.runId,
+      exported_at: new Date().toISOString(),
+      client_events: this.localEvents,
+      server_run: serverRun ?? null,
+      classification:
+        (serverRun?.classification as string | undefined) ??
+        null,
+      persistence_note:
+        "Primary durable trail: Vercel logs filtered by diagnostic_run_id. This JSON merges client buffer + best-effort server cache.",
+    };
+  }
 }
+
+export type { DiagnosticInteractivityMode as LiveAvatarInteractivityMode };
 
 export { installPeerConnectionTap } from "./pttDiagnostics";

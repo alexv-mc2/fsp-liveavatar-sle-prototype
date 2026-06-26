@@ -1,36 +1,63 @@
-export type DiagnosticEvent = {
-  ts: string;
-  phase: string;
-  payload?: Record<string, unknown>;
-};
+import type {
+  DiagnosticBreakpoint,
+  DiagnosticEvent,
+  DiagnosticRun,
+} from "@/lib/liveavatar/diagnosticTypes";
+import { classifyDiagnosticRun } from "@/lib/liveavatar/diagnosticClassification";
+import {
+  correlateCustomLlmToRuns,
+  type CustomLlmCorrelationMethod,
+} from "./diagnosticCorrelation";
+import { logDiagnosticEvent } from "./diagnosticLogger";
+import { sanitizeDiagnosticPayload } from "./diagnosticSanitize";
 
-export type DiagnosticRun = {
-  runId: string;
-  startedAt: string;
-  endedAt?: string;
-  interactivityType?: string;
-  events: DiagnosticEvent[];
-};
-
-const MAX_RUNS = 40;
+const MAX_RUNS = 80;
 const RUN_TTL_MS = 60 * 60 * 1000;
+
+export type { DiagnosticEvent, DiagnosticRun, DiagnosticBreakpoint };
 
 export class LiveAvatarDiagnosticStore {
   private readonly runs = new Map<string, DiagnosticRun>();
 
   createRun(
     runId: string,
-    meta: { interactivityType?: string } = {},
+    meta: {
+      interactivityType?: string;
+      fspSessionIdPrefix?: string;
+      providerSessionIdPrefix?: string;
+    } = {},
   ): DiagnosticRun {
     this.pruneExpired();
     const run: DiagnosticRun = {
       runId,
       startedAt: new Date().toISOString(),
       interactivityType: meta.interactivityType,
+      fspSessionIdPrefix: meta.fspSessionIdPrefix,
+      providerSessionIdPrefix: meta.providerSessionIdPrefix,
       events: [],
     };
     this.runs.set(runId, run);
     this.enforceCapacity();
+    return run;
+  }
+
+  updateRunContext(
+    runId: string,
+    context: {
+      fspSessionIdPrefix?: string;
+      providerSessionIdPrefix?: string;
+    },
+  ): DiagnosticRun | undefined {
+    const run = this.runs.get(runId);
+    if (!run) {
+      return undefined;
+    }
+    if (context.fspSessionIdPrefix) {
+      run.fspSessionIdPrefix = context.fspSessionIdPrefix;
+    }
+    if (context.providerSessionIdPrefix) {
+      run.providerSessionIdPrefix = context.providerSessionIdPrefix;
+    }
     return run;
   }
 
@@ -40,7 +67,8 @@ export class LiveAvatarDiagnosticStore {
       return undefined;
     }
     run.endedAt = new Date().toISOString();
-    this.appendEvent(runId, "run_ended");
+    run.classification = classifyDiagnosticRun(run);
+    this.appendEvent(runId, "run_ended", undefined, "server");
     return run;
   }
 
@@ -48,41 +76,100 @@ export class LiveAvatarDiagnosticStore {
     runId: string,
     phase: string,
     payload?: Record<string, unknown>,
+    source: "client" | "server" = "client",
+    requestId?: string,
   ): DiagnosticRun | undefined {
     const run = this.runs.get(runId);
     if (!run) {
       return undefined;
     }
-    run.events.push({
+
+    const event: DiagnosticEvent = {
       ts: new Date().toISOString(),
       phase,
-      payload: payload ? sanitizePayload(payload) : undefined,
+      source,
+      request_id: requestId,
+      payload: payload ? sanitizeDiagnosticPayload(payload) : undefined,
+    };
+    run.events.push(event);
+    run.classification = classifyDiagnosticRun(run);
+
+    logDiagnosticEvent({
+      diagnostic_run_id: runId,
+      phase,
+      source,
+      request_id: requestId,
+      payload,
     });
+
     return run;
   }
 
   getRun(runId: string): DiagnosticRun | undefined {
-    return this.runs.get(runId);
+    const run = this.runs.get(runId);
+    if (!run) {
+      return undefined;
+    }
+    return {
+      ...run,
+      classification: run.classification ?? classifyDiagnosticRun(run),
+    };
   }
 
   getActiveRuns(at = Date.now()): DiagnosticRun[] {
     return [...this.runs.values()].filter((run) => {
       if (run.endedAt) {
-        const ended = Date.parse(run.endedAt);
-        return at - ended < 30_000;
+        return at - Date.parse(run.endedAt) < 30_000;
       }
       return at - Date.parse(run.startedAt) < RUN_TTL_MS;
     });
   }
 
-  recordCustomLlmCallback(payload: Record<string, unknown>): string[] {
-    const active = this.getActiveRuns();
-    const matched: string[] = [];
-    for (const run of active) {
-      this.appendEvent(run.runId, "custom_llm_callback", payload);
-      matched.push(run.runId);
+  recordCustomLlmCallback(payload: Record<string, unknown>): {
+    matchedRunIds: string[];
+    correlationMethod: CustomLlmCorrelationMethod;
+  } {
+    const { runIds, method } = correlateCustomLlmToRuns(
+      [...this.runs.values()],
+      {
+        fsp_session_id:
+          typeof payload.fsp_session_id === "string"
+            ? payload.fsp_session_id
+            : undefined,
+        provider_session_id:
+          typeof payload.provider_session_id === "string"
+            ? payload.provider_session_id
+            : undefined,
+      },
+    );
+
+    const enriched = {
+      ...payload,
+      correlation_method: method,
+    };
+
+    for (const runId of runIds) {
+      this.appendEvent(
+        runId,
+        "custom_llm_callback",
+        enriched,
+        "server",
+        typeof payload.request_id === "string" ? payload.request_id : undefined,
+      );
     }
-    return matched;
+
+    if (runIds.length === 0) {
+      logDiagnosticEvent({
+        diagnostic_run_id: "uncorrelated",
+        phase: "custom_llm_callback_uncorrelated",
+        source: "server",
+        request_id:
+          typeof payload.request_id === "string" ? payload.request_id : undefined,
+        payload: enriched,
+      });
+    }
+
+    return { matchedRunIds: runIds, correlationMethod: method };
   }
 
   clear(): void {
@@ -115,34 +202,6 @@ export class LiveAvatarDiagnosticStore {
   }
 }
 
-function sanitizePayload(
-  payload: Record<string, unknown>,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(payload)) {
-    if (value === undefined || value === null) {
-      continue;
-    }
-    if (typeof value === "string") {
-      out[key] =
-        value.length > 120 ? `${value.slice(0, 8)}…(${value.length})` : value;
-      continue;
-    }
-    if (typeof value === "number" || typeof value === "boolean") {
-      out[key] = value;
-      continue;
-    }
-    if (Array.isArray(value)) {
-      out[key] = value.slice(0, 10);
-      continue;
-    }
-    if (typeof value === "object") {
-      out[key] = sanitizePayload(value as Record<string, unknown>);
-    }
-  }
-  return out;
-}
-
 const globalStore = globalThis as typeof globalThis & {
   __fspLiveAvatarDiagnosticStore?: LiveAvatarDiagnosticStore;
 };
@@ -154,8 +213,26 @@ export const liveAvatarDiagnosticStore =
 globalStore.__fspLiveAvatarDiagnosticStore = liveAvatarDiagnosticStore;
 
 export function isDiagnosticApiEnabled(): boolean {
-  return (
-    process.env.VERCEL_ENV === "preview" ||
-    process.env.NODE_ENV === "development"
-  );
+  if (process.env.FSP_LIVEAVATAR_DIAGNOSTICS === "0") {
+    return false;
+  }
+  return true;
+}
+
+export function registerFspSessionOnRun(
+  runId: string,
+  fspSessionId: string,
+): void {
+  liveAvatarDiagnosticStore.updateRunContext(runId, {
+    fspSessionIdPrefix: fspSessionId.slice(0, 8),
+  });
+}
+
+export function registerProviderSessionOnRun(
+  runId: string,
+  providerSessionId: string,
+): void {
+  liveAvatarDiagnosticStore.updateRunContext(runId, {
+    providerSessionIdPrefix: providerSessionId.slice(0, 8),
+  });
 }

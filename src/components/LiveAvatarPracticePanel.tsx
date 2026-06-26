@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { LiveAvatarDebugPanel } from "@/components/LiveAvatarDebugPanel";
 import { useFspLiveAvatarSession } from "@/hooks/useFspLiveAvatarSession";
+import { isLiveAvatarDebugEnabled } from "@/lib/liveavatar/diagnosticRun";
 import type { LiveAvatarUiState } from "@/lib/liveavatar/types";
 
 function statusLabel(state: LiveAvatarUiState): string {
@@ -64,6 +66,7 @@ export function LiveAvatarPracticePanel() {
     isListeningActive,
     streamReady,
     diagnosticRunId,
+    diagnosticRun,
     micPermission,
     createFspSession,
     startLiveAvatar,
@@ -123,16 +126,18 @@ export function LiveAvatarPracticePanel() {
 
       {diagnosticRunId ? (
         <div className="notice notice-info liveavatar-debug-banner">
-          <strong>Diagnose-Lauf:</strong>{" "}
-          <code>{diagnosticRunId}</code>
+          <strong>Diagnose-Lauf:</strong> <code>{diagnosticRunId}</code>
           <span className="muted-copy">
             {" "}
-            · Cursor kann Ereignisse unter{" "}
-            <code>/api/debug/liveavatar/runs/{diagnosticRunId}</code> abrufen.
-            HeyGen kann <code>diagnostic_run_id</code> nicht an Custom LLM
-            weitergeben — Korrelation erfolgt über Lauf-Start/Ende und Server-Logs.
+            · Ereignisse werden an Vercel-Logs (
+            <code>diagnostic_run_id={diagnosticRunId}</code>) und den Server-Cache
+            gesendet. Panel unten für Klassifikation + JSON-Export.
           </span>
         </div>
+      ) : null}
+
+      {isLiveAvatarDebugEnabled() && diagnosticRunId ? (
+        <LiveAvatarDebugPanel runId={diagnosticRunId} diagnosticRun={diagnosticRun} />
       ) : null}
 
       <div className="notice notice-warning">

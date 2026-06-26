@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AgentEventsEnum,
   LiveAvatarSession,
   SessionDisconnectReason,
   SessionEvent,
@@ -16,14 +17,17 @@ import {
 } from "@/lib/liveavatar/clientApi";
 import { LIVEAVATAR_SDK_API_URL } from "@/lib/liveavatar/constants";
 import {
+  diagnosticRequestHeaders,
   installPeerConnectionTap,
   isLiveAvatarDebugEnabled,
   LiveAvatarDiagnosticRun,
 } from "@/lib/liveavatar/diagnosticRun";
+import { runGreetingDiagnostic } from "@/lib/liveavatar/greetingDiagnostic";
 import {
   startSdkPushToTalk,
   stopSdkPushToTalk,
 } from "@/lib/liveavatar/pushToTalk";
+import { decodeSessionTokenClaimsSanitized } from "@/lib/liveavatar/tokenClaimsSanitized";
 import type {
   LiveAvatarInteractivityMode,
   LiveAvatarUiState,
@@ -55,9 +59,17 @@ export function useFspLiveAvatarSession(
   const [isListeningActive, setIsListeningActive] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
   const [diagnosticRunId, setDiagnosticRunId] = useState<string | null>(null);
+  const [diagnosticRun, setDiagnosticRun] = useState<LiveAvatarDiagnosticRun | null>(
+    null,
+  );
   const [micPermission, setMicPermission] = useState<
     "unknown" | "granted" | "denied" | "prompt"
   >("unknown");
+
+  const logVisibleError = useCallback(async (message: string) => {
+    setErrorMessage(message);
+    await diagnosticRef.current?.log("visible_error", { message });
+  }, []);
 
   const stopRtpSampling = useCallback(() => {
     if (rtpIntervalRef.current !== null) {
@@ -82,6 +94,37 @@ export function useFspLiveAvatarSession(
     },
     [stopRtpSampling, videoRef],
   );
+
+  const attachAgentEventLogging = useCallback((session: LiveAvatarSession) => {
+    if (!isLiveAvatarDebugEnabled()) {
+      return;
+    }
+
+    const agentEvents = [
+      AgentEventsEnum.AVATAR_SPEAK_STARTED,
+      AgentEventsEnum.AVATAR_SPEAK_ENDED,
+      AgentEventsEnum.USER_SPEAK_STARTED,
+      AgentEventsEnum.USER_SPEAK_ENDED,
+      AgentEventsEnum.AVATAR_TRANSCRIPTION,
+      AgentEventsEnum.USER_TRANSCRIPTION,
+    ] as const;
+
+    for (const eventName of agentEvents) {
+      session.on(eventName, (event: { event_type?: string }) => {
+        void diagnosticRef.current?.log("sdk_event", {
+          agent_event: eventName,
+          name: eventName,
+          event_type: event?.event_type,
+        });
+        if (eventName === AgentEventsEnum.AVATAR_SPEAK_STARTED) {
+          void diagnosticRef.current?.log("avatar_speak_started");
+        }
+        if (eventName === AgentEventsEnum.AVATAR_SPEAK_ENDED) {
+          void diagnosticRef.current?.log("avatar_speak_ended");
+        }
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (isLiveAvatarDebugEnabled()) {
@@ -132,34 +175,44 @@ export function useFspLiveAvatarSession(
         return;
       }
       diagnosticRef.current = run;
+      setDiagnosticRun(run);
       setDiagnosticRunId(run.runId);
     });
   }, [diagnosticRunId, interactivityType]);
 
   const createFspSession = useCallback(async () => {
     setErrorMessage(null);
-    await diagnosticRef.current?.log("connect_start", {
+    await diagnosticRef.current?.log("fsp_session_create_start", {
       interactivity_type: interactivityType,
     });
 
     const response = await fetch("/api/sessions", {
       method: "POST",
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        ...diagnosticRequestHeaders(diagnosticRef.current?.runId),
+      },
       cache: "no-store",
     });
 
     if (!response.ok) {
+      await diagnosticRef.current?.log("fsp_session_create_failure", {
+        http_status: response.status,
+      });
       throw new Error("FSP-Sitzung konnte nicht erstellt werden.");
     }
 
     const payload = (await response.json()) as { session?: { id?: string } };
     const id = payload.session?.id;
     if (typeof id !== "string") {
+      await diagnosticRef.current?.log("fsp_session_create_failure", {
+        reason: "invalid_response",
+      });
       throw new Error("Ungültige FSP-Sitzungsantwort.");
     }
 
     setFspSessionId(id);
-    await diagnosticRef.current?.log("fsp_session_created", {
+    await diagnosticRef.current?.log("fsp_session_create_success", {
       session_id_prefix: id.slice(0, 8),
     });
     if (uiState === "unconfigured") {
@@ -195,7 +248,7 @@ export function useFspLiveAvatarSession(
 
   const startLiveAvatar = useCallback(async () => {
     if (!fspSessionId) {
-      setErrorMessage("Bitte zuerst eine FSP-Sitzung erstellen.");
+      await logVisibleError("Bitte zuerst eine FSP-Sitzung erstellen.");
       return;
     }
 
@@ -224,15 +277,27 @@ export function useFspLiveAvatarSession(
         }
       }
 
-      const tokenPayload = await requestHeyGenSessionToken(fspSessionId);
+      await diagnosticRef.current?.log("session_token_start", {
+        fsp_session_id_prefix: fspSessionId.slice(0, 8),
+      });
+
+      const tokenPayload = await requestHeyGenSessionToken(fspSessionId, fetch, {
+        diagnosticRunId: diagnosticRef.current?.runId,
+      });
       const mintedMode =
         tokenPayload.interactivity_type ?? interactivityType;
       setInteractivityType(mintedMode);
       setProviderSessionId(tokenPayload.provider_session_id);
 
-      await diagnosticRef.current?.log("token_received", {
+      const tokenClaims = decodeSessionTokenClaimsSanitized(
+        tokenPayload.session_token,
+      );
+      await diagnosticRef.current?.log("session_token_success", {
         interactivity_type: mintedMode,
         provider_session_id_prefix: tokenPayload.provider_session_id.slice(0, 8),
+      });
+      await diagnosticRef.current?.log("token_claims_sanitized", tokenClaims ?? {
+        decode_error: true,
       });
 
       const sdkMode = resolveSdkInteractivityMode(mintedMode);
@@ -244,6 +309,7 @@ export function useFspLiveAvatarSession(
         },
       });
       sessionRef.current = session;
+      attachAgentEventLogging(session);
 
       session.voiceChat.on(VoiceChatEvent.MUTED, () => {
         void diagnosticRef.current?.log("voice_chat_muted");
@@ -252,11 +318,17 @@ export function useFspLiveAvatarSession(
         void diagnosticRef.current?.log("voice_chat_unmuted");
       });
       session.voiceChat.on(VoiceChatEvent.STATE_CHANGED, (state) => {
-        void diagnosticRef.current?.log("voice_chat_state", { state: String(state) });
+        void diagnosticRef.current?.log("sdk_event", {
+          name: "VOICE_CHAT_STATE_CHANGED",
+          state: String(state),
+        });
       });
 
       session.on(SessionEvent.SESSION_STATE_CHANGED, (state) => {
-        void diagnosticRef.current?.log("sdk_session_state", { state: String(state) });
+        void diagnosticRef.current?.log("sdk_event", {
+          name: "SESSION_STATE_CHANGED",
+          state: String(state),
+        });
         if (state === SessionState.CONNECTED) {
           setUiState("connected");
         } else if (state === SessionState.DISCONNECTING) {
@@ -279,45 +351,67 @@ export function useFspLiveAvatarSession(
         if (video) {
           session.attach(video);
         }
+        void diagnosticRef.current?.log("sdk_event", {
+          name: "SESSION_STREAM_READY",
+        });
+        void diagnosticRef.current?.log("stream_ready");
         void diagnosticRef.current?.snapshotSession(
           session,
-          "stream_ready",
+          "remote_audio_snapshot",
           videoRef.current,
         );
         startRtpSampling(session);
       });
 
       session.on(SessionEvent.SESSION_DISCONNECTED, (reason) => {
-        void diagnosticRef.current?.log("sdk_disconnected", {
+        void diagnosticRef.current?.log("sdk_event", {
+          name: "SESSION_DISCONNECTED",
           reason: String(reason),
         });
         if (reason === SessionDisconnectReason.SESSION_START_FAILED) {
-          setErrorMessage("LiveAvatar-Verbindung konnte nicht gestartet werden.");
+          void logVisibleError(
+            "LiveAvatar-Verbindung konnte nicht gestartet werden.",
+          );
           setUiState("error");
         }
       });
 
+      await diagnosticRef.current?.log("sdk_start_start", {
+        interactivity_type: mintedMode,
+      });
       await session.start();
-      await diagnosticRef.current?.log("sdk_started", {
+      await diagnosticRef.current?.log("sdk_start_success", {
         interactivity_type: mintedMode,
       });
       await diagnosticRef.current?.snapshotSession(
         session,
-        "sdk_started_snapshot",
+        "audio_track_snapshot",
         videoRef.current,
       );
+
+      const greeting = runGreetingDiagnostic(session);
+      if (greeting.supported) {
+        await diagnosticRef.current?.log("greeting_command_sent", greeting);
+      } else {
+        await diagnosticRef.current?.log(greeting.phase, greeting);
+      }
     } catch (error) {
       sessionRef.current = null;
       setUiState("error");
       const message =
         error instanceof Error ? error.message : "Unbekannter Fehler beim Start.";
-      setErrorMessage(message);
-      await diagnosticRef.current?.log("sdk_error", { message });
+      await diagnosticRef.current?.log("sdk_start_failure", { message });
+      await diagnosticRef.current?.log("session_token_failure", {
+        message,
+      });
+      await logVisibleError(message);
     }
   }, [
+    attachAgentEventLogging,
     bridgeReady,
     fspSessionId,
     interactivityType,
+    logVisibleError,
     startRtpSampling,
     stopRtpSampling,
     videoRef,
@@ -332,22 +426,21 @@ export function useFspLiveAvatarSession(
     try {
       await startSdkPushToTalk(session.voiceChat);
       setIsPushToTalkActive(true);
+      await diagnosticRef.current?.log("ptt_start");
       await diagnosticRef.current?.snapshotSession(
         session,
-        "ptt_start",
+        "outbound_rtp_snapshot",
         videoRef.current,
       );
     } catch (error) {
-      setErrorMessage(
+      const message =
         error instanceof Error
           ? error.message
-          : "Mikrofon / Push-to-Talk fehlgeschlagen.",
-      );
-      await diagnosticRef.current?.log("ptt_start_error", {
-        message: error instanceof Error ? error.message : "unknown",
-      });
+          : "Mikrofon / Push-to-Talk fehlgeschlagen.";
+      await logVisibleError(message);
+      await diagnosticRef.current?.log("ptt_start_error", { message });
     }
-  }, [interactivityType, uiState, videoRef]);
+  }, [interactivityType, logVisibleError, uiState, videoRef]);
 
   const stopPushToTalk = useCallback(async () => {
     const session = sessionRef.current;
@@ -357,9 +450,10 @@ export function useFspLiveAvatarSession(
 
     try {
       await stopSdkPushToTalk(session.voiceChat);
+      await diagnosticRef.current?.log("ptt_stop");
       await diagnosticRef.current?.snapshotSession(
         session,
-        "ptt_stop",
+        "outbound_rtp_snapshot",
         videoRef.current,
       );
     } finally {
@@ -379,7 +473,7 @@ export function useFspLiveAvatarSession(
       await diagnosticRef.current?.log("conversational_listening_start");
       await diagnosticRef.current?.snapshotSession(
         session,
-        "conversational_listening_start_snapshot",
+        "audio_track_snapshot",
         videoRef.current,
       );
     } catch (error) {
@@ -400,7 +494,7 @@ export function useFspLiveAvatarSession(
       await diagnosticRef.current?.log("conversational_listening_stop");
       await diagnosticRef.current?.snapshotSession(
         session,
-        "conversational_listening_stop_snapshot",
+        "audio_track_snapshot",
         videoRef.current,
       );
     } finally {
@@ -427,6 +521,7 @@ export function useFspLiveAvatarSession(
     isListeningActive,
     streamReady,
     diagnosticRunId,
+    diagnosticRun,
     micPermission,
     createFspSession,
     startLiveAvatar,
