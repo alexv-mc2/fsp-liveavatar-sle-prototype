@@ -11,4 +11,5 @@ export async function startSdkPushToTalk(voiceChat: VoiceChat) {
 
 export async function stopSdkPushToTalk(voiceChat: VoiceChat) {
   await voiceChat.stopPushToTalk();
+  await voiceChat.mute();
 }

@@ -18,6 +18,13 @@ import {
   startSdkPushToTalk,
   stopSdkPushToTalk,
 } from "@/lib/liveavatar/pushToTalk";
+import {
+  installPeerConnectionTap,
+  isLiveAvatarDebugEnabled,
+  readOutboundAudioRtp,
+  snapshotLocalAudioTrack,
+  snapshotVoiceChat,
+} from "@/lib/liveavatar/pttDiagnostics";
 import type { LiveAvatarUiState } from "@/lib/liveavatar/types";
 
 export function useFspLiveAvatarSession(
@@ -31,6 +38,32 @@ export function useFspLiveAvatarSession(
   const [bridgeReady, setBridgeReady] = useState<boolean | null>(null);
   const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
+
+  useEffect(() => {
+    if (isLiveAvatarDebugEnabled()) {
+      installPeerConnectionTap();
+    }
+  }, []);
+
+  async function logPttDiagnostics(
+    session: LiveAvatarSession,
+    phase: "ptt_start" | "ptt_stop",
+  ) {
+    if (!isLiveAvatarDebugEnabled()) {
+      return;
+    }
+
+    const voice = snapshotVoiceChat(session.voiceChat);
+    const track = snapshotLocalAudioTrack(session);
+    const rtp = await readOutboundAudioRtp(session);
+
+    console.info("[fsp-ptt]", {
+      phase,
+      voice,
+      track,
+      rtp,
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +152,10 @@ export function useFspLiveAvatarSession(
     setErrorMessage(null);
     setStreamReady(false);
 
+    if (isLiveAvatarDebugEnabled()) {
+      installPeerConnectionTap();
+    }
+
     try {
       const tokenPayload = await requestHeyGenSessionToken(fspSessionId);
       setProviderSessionId(tokenPayload.provider_session_id);
@@ -181,6 +218,7 @@ export function useFspLiveAvatarSession(
     try {
       await startSdkPushToTalk(session.voiceChat);
       setIsPushToTalkActive(true);
+      await logPttDiagnostics(session, "ptt_start");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -198,6 +236,7 @@ export function useFspLiveAvatarSession(
 
     try {
       await stopSdkPushToTalk(session.voiceChat);
+      await logPttDiagnostics(session, "ptt_stop");
     } finally {
       setIsPushToTalkActive(false);
     }

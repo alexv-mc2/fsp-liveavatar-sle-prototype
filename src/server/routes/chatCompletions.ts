@@ -249,6 +249,13 @@ export async function handleChatCompletionPost(request: Request) {
     const result = processChatCompletion(body, {
       headerSessionId: request.headers.get("x-fsp-session-id") ?? undefined,
     });
+    console.info("[custom-llm]", {
+      status: 200,
+      correlation: result.x_fsp.correlation.session_id_source,
+      messageCount: Array.isArray((body as { messages?: unknown[] }).messages)
+        ? (body as { messages: unknown[] }).messages.length
+        : 0,
+    });
     return NextResponse.json(result, {
       headers: { "x-fsp-session-id": result.x_fsp.session_id },
     });
