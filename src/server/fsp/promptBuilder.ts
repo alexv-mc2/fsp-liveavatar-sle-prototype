@@ -1,4 +1,9 @@
 import type { SessionState, SleScenario } from "./types";
+import {
+  buildAuthoritativeScenarioContext,
+  type AuthoritativeScenarioContext,
+} from "./scenarioContextLoader";
+import type { ParsedChatMessage } from "../integrations/customLlm/messageExtraction";
 
 export interface PatientPromptEnvelope {
   system: string;
@@ -6,10 +11,19 @@ export interface PatientPromptEnvelope {
   forbiddenFactIds: string[];
 }
 
+export function buildAuthoritativePatientContext(
+  scenario: SleScenario,
+  messages: ParsedChatMessage[],
+): AuthoritativeScenarioContext {
+  return buildAuthoritativeScenarioContext(scenario, messages);
+}
+
 export function buildPatientPromptEnvelope(
   session: SessionState,
   scenario: SleScenario,
+  messages: ParsedChatMessage[] = [],
 ): PatientPromptEnvelope {
+  const context = buildAuthoritativeScenarioContext(scenario, messages);
   const allowedFacts = scenario.facts
     .filter(
       (fact) =>
@@ -29,14 +43,7 @@ export function buildPatientPromptEnvelope(
     .map((fact) => fact.id);
 
   return {
-    system: [
-      "Du spielst eine fiktive Patientin in einer deutschen FSP-Trainingssimulation.",
-      "Antworte kurz, natürlich und nur mit ausdrücklich freigegebenen Fakten.",
-      "Erfinde keine medizinischen Angaben und nenne in der Patientenphase keine Laborwerte.",
-      "Gib keine medizinische Beratung für reale Personen.",
-      `Aktuelle Phase: ${session.phase}.`,
-      `Inhaltsstatus: ${scenario.metadata.content_status}.`,
-    ].join(" "),
+    system: context.systemPromptDe,
     allowedFacts,
     forbiddenFactIds,
   };

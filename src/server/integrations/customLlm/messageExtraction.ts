@@ -113,17 +113,23 @@ function normalizeRole(role: unknown): ParsedChatMessage["role"] | null {
 export function resolveLatestUserMessage(
   messages: ParsedChatMessage[],
 ): UserMessageResolution {
+  let sawUserRole = false;
+
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
     if (normalizeRole(message.role) !== "user") {
       continue;
     }
 
+    sawUserRole = true;
     const text = messageContentToText(message.content).trim();
-    if (!text) {
-      return { kind: "empty", reason: "empty_content" };
+    if (text) {
+      return { kind: "text", text, index };
     }
-    return { kind: "text", text, index };
+  }
+
+  if (sawUserRole) {
+    return { kind: "empty", reason: "empty_content" };
   }
 
   return { kind: "empty", reason: "missing_user" };

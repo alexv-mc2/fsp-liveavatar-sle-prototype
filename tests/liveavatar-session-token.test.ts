@@ -150,6 +150,19 @@ describe("LiveAvatar session token request body", () => {
     });
     expect(body.avatar_persona).not.toHaveProperty("context_id");
   });
+
+  it("includes dynamic_variables when fsp_session_id is provided at mint time", () => {
+    setConfiguredLiveAvatarEnv(false);
+    const runtime = readLiveAvatarRuntimeConfig();
+    expect(runtime).not.toBeNull();
+
+    const fspSessionId = "11111111-1111-4111-8111-111111111111";
+    const body = buildCreateSessionTokenBody(runtime!, { fspSessionId });
+    expect(body.dynamic_variables).toEqual({
+      fsp_session_id: fspSessionId,
+      case_id: "fsp-nrw-sle",
+    });
+  });
 });
 
 describe("LiveAvatar session token minting", () => {

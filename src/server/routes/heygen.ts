@@ -9,12 +9,13 @@ import {
 } from "../debug/liveAvatarDiagnosticStore";
 import {
   createHeyGenSessionToken,
+  enrichHeyGenStatusRouteProof,
   getHeyGenIntegrationStatus,
   LiveAvatarApiError,
 } from "../integrations/heygen/sessionToken";
 
-export function getHeyGenStatusPayload() {
-  return getHeyGenIntegrationStatus();
+export async function getHeyGenStatusPayload() {
+  return enrichHeyGenStatusRouteProof(getHeyGenIntegrationStatus());
 }
 
 export async function handleHeyGenSessionTokenPost(request: Request) {
@@ -99,7 +100,10 @@ export async function handleHeyGenSessionTokenPost(request: Request) {
       liveAvatarDiagnosticStore.appendEvent(
         diagnosticRunId,
         "token_claims_sanitized",
-        tokenClaims ?? { decode_error: true },
+        {
+          ...(tokenClaims ?? { decode_error: true }),
+          route_proof: payload.route_proof,
+        },
         "server",
         requestId,
       );
