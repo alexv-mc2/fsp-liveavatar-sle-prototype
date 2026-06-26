@@ -100,13 +100,16 @@ export async function fetchHeyGenBridgeStatus(
 export async function requestHeyGenSessionToken(
   fspSessionId: string,
   fetchFn: FetchFn = fetch,
-  init?: Pick<RequestInit, "signal">,
+  init?: Pick<RequestInit, "signal"> & { diagnosticRunId?: string | null },
 ): Promise<HeyGenSessionTokenOk> {
   const response = await fetchFn(FSP_HEYGEN_SESSION_TOKEN_PATH, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...(init?.diagnosticRunId
+        ? { "x-fsp-diagnostic-run-id": init.diagnosticRunId }
+        : {}),
     },
     body: JSON.stringify({ fsp_session_id: fspSessionId }),
     cache: "no-store",

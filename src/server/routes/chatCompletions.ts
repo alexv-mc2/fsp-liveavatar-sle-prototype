@@ -281,18 +281,42 @@ export function processChatCompletion(
 export async function handleChatCompletionPost(request: Request) {
   const requestId = crypto.randomUUID().slice(0, 8);
   const receivedAt = new Date().toISOString();
+  const startedAt = Date.now();
   let requestShape: ReturnType<typeof describeCustomLlmRequestShape> | undefined;
+  const diagnosticRunId = request.headers.get("x-fsp-diagnostic-run-id") ?? undefined;
+  let correlationSessionId: string | undefined;
 
   try {
     const body = await request.json();
     requestShape = describeCustomLlmRequestShape(body);
     const headerSessionId = request.headers.get("x-fsp-session-id") ?? undefined;
+    correlationSessionId =
+      headerSessionId ??
+      (typeof body?.session_id === "string" ? body.session_id : undefined);
+
+    if (diagnosticRunId) {
+      liveAvatarDiagnosticStore.appendEvent(
+        diagnosticRunId,
+        "custom_llm_request",
+        {
+          request_shape: requestShape,
+          session_id_prefix: (headerSessionId ?? body?.session_id ?? "none")
+            .toString()
+            .slice(0, 8),
+        },
+        "server",
+        requestId,
+      );
+    }
+
     const result = processChatCompletion(body, { headerSessionId });
 
+    const latencyMs = Date.now() - startedAt;
     const logPayload = {
       request_id: requestId,
       received_at: receivedAt,
       status: 200,
+      latency_ms: latencyMs,
       request_shape: requestShape,
       correlation: result.x_fsp.correlation.session_id_source,
       session_id_prefix: (result.x_fsp.session_id || "none").slice(0, 8),
@@ -300,23 +324,55 @@ export async function handleChatCompletionPost(request: Request) {
       vad_noop: result.x_fsp.vad_noop ?? false,
       vad_noop_reason: result.x_fsp.vad_noop_reason ?? null,
       has_assistant_content: Boolean(result.choices[0]?.message.content),
-      active_diagnostic_runs: liveAvatarDiagnosticStore
-        .getActiveRuns()
-        .map((run) => run.runId),
+      assistant_content_len: result.choices[0]?.message.content?.length ?? 0,
+      diagnostic_run_id: diagnosticRunId ?? null,
     };
 
     console.info("[custom-llm]", logPayload);
 
-    liveAvatarDiagnosticStore.recordCustomLlmCallback({
-      request_id: requestId,
-      received_at: receivedAt,
-      status: 200,
-      correlation: result.x_fsp.correlation.session_id_source,
-      message_count: requestShape.message_count,
-      user_preview_len: requestShape.latest_user_text_len,
-      has_assistant_content: logPayload.has_assistant_content,
-      vad_noop: logPayload.vad_noop,
-    });
+    const { matchedRunIds, correlationMethod } =
+      liveAvatarDiagnosticStore.recordCustomLlmCallback({
+        request_id: requestId,
+        received_at: receivedAt,
+        status: 200,
+        latency_ms: latencyMs,
+        request_shape: requestShape,
+        correlation: result.x_fsp.correlation.session_id_source,
+        fsp_session_id: result.x_fsp.session_id || undefined,
+        message_count: requestShape.message_count,
+        user_preview_len: requestShape.latest_user_text_len,
+        has_assistant_content: logPayload.has_assistant_content,
+        assistant_content_present: logPayload.has_assistant_content,
+        vad_noop: logPayload.vad_noop,
+        roles: requestShape.roles,
+        latest_user_content_kind: requestShape.latest_user_content_kind,
+      });
+
+    if (diagnosticRunId && !matchedRunIds.includes(diagnosticRunId)) {
+      liveAvatarDiagnosticStore.appendEvent(
+        diagnosticRunId,
+        "custom_llm_result",
+        {
+          ...logPayload,
+          correlation_method: "header_diagnostic_run_id",
+        },
+        "server",
+        requestId,
+      );
+    } else if (matchedRunIds.length > 0) {
+      for (const runId of matchedRunIds) {
+        liveAvatarDiagnosticStore.appendEvent(
+          runId,
+          "custom_llm_result",
+          {
+            ...logPayload,
+            correlation_method: correlationMethod,
+          },
+          "server",
+          requestId,
+        );
+      }
+    }
 
     const responseHeaders: Record<string, string> = {
       "x-fsp-request-id": requestId,
@@ -330,11 +386,14 @@ export async function handleChatCompletionPost(request: Request) {
     });
   } catch (error) {
     const httpError = toHttpError(error);
+    const latencyMs = Date.now() - startedAt;
     console.info("[custom-llm]", {
       request_id: requestId,
       received_at: receivedAt,
       status: httpError.status,
+      latency_ms: latencyMs,
       request_shape: requestShape,
+      diagnostic_run_id: diagnosticRunId ?? null,
       error_code:
         typeof httpError.body === "object" &&
         httpError.body !== null &&
@@ -344,6 +403,35 @@ export async function handleChatCompletionPost(request: Request) {
           ? (httpError.body as { error: { code: string } }).error.code
           : "unknown",
     });
-    return NextResponse.json(httpError.body, { status: httpError.status });
+
+    liveAvatarDiagnosticStore.recordCustomLlmCallback({
+      request_id: requestId,
+      received_at: receivedAt,
+      status: httpError.status,
+      latency_ms: latencyMs,
+      request_shape: requestShape,
+      fsp_session_id: correlationSessionId,
+      has_assistant_content: false,
+      vad_noop: false,
+    });
+
+    if (diagnosticRunId) {
+      liveAvatarDiagnosticStore.appendEvent(
+        diagnosticRunId,
+        "custom_llm_result",
+        {
+          status: httpError.status,
+          latency_ms: latencyMs,
+          request_shape: requestShape,
+        },
+        "server",
+        requestId,
+      );
+    }
+
+    return NextResponse.json(httpError.body, {
+      status: httpError.status,
+      headers: { "x-fsp-request-id": requestId },
+    });
   }
 }

@@ -348,6 +348,90 @@ h3 {
   margin-top: 12px;
 }
 
+.liveavatar-debug-panel {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #f4faf9;
+}
+
+.liveavatar-debug-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.liveavatar-debug-run-id {
+  margin-left: 8px;
+  font-size: 0.92rem;
+}
+
+.liveavatar-debug-classification {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.classification-avatar_responded {
+  border-color: #9fd4c8;
+  color: #0f5d5f;
+}
+
+.classification-unknown,
+.classification-no_llm_callback,
+.classification-llm_200_content_no_audio {
+  border-color: #ead6aa;
+  color: var(--warning);
+}
+
+.classification-token_fail,
+.classification-sdk_start_fail,
+.classification-video_fail,
+.classification-mic_fail,
+.classification-llm_400 {
+  border-color: #ecc9cc;
+  color: var(--error);
+}
+
+.liveavatar-debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.liveavatar-debug-note {
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+}
+
+.liveavatar-debug-timeline {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+}
+
+.liveavatar-debug-timeline li {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.liveavatar-debug-phase {
+  font-family: var(--font-mono, monospace);
+}
+
 .avatar-stream-ready .liveavatar-video-placeholder {
   display: none;
 }
