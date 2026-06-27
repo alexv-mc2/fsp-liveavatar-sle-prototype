@@ -1,5 +1,9 @@
 import type { FactRevealEvent, SessionState, SleScenario } from "../types";
 import {
+  buildBiographyResponse,
+  inferRepeatBiographyIntent,
+} from "./biographyResponses";
+import {
   detectQuestionQualities,
   getExaminerOnlyIntent,
   getVagueClarifyKey,
@@ -7,6 +11,7 @@ import {
   inferFamilyIntent,
   inferSubstanceIntent,
   isBroadQuestion,
+  isChiefComplaintOpenerQuestion,
   isJargonQuestion,
   isLeadingQuestion,
   isRaynaudColorQuestion,
@@ -28,42 +33,9 @@ const CLARIFY_TEMPLATES: Record<string, string> = {
 };
 
 const SALIENT_BROAD_FACT_IDS = [
-  "chief_fatigue",
   "timeline_weeks",
   "joint_pain_pattern",
-  "butterfly_rash",
-  "photosensitivity",
 ];
-
-function buildBiographyResponse(
-  intent: string,
-  scenario: SleScenario,
-): { responseDe: string; responseClass: ResponseClass } {
-  const { patient } = scenario;
-  if (intent === "biography.name") {
-    const name = patient.display_name.replace(/^Frau\s+/i, "").trim();
-    return {
-      responseDe: `Ich heiße ${name}.`,
-      responseClass: "neutral_default",
-    };
-  }
-  if (intent === "biography.age") {
-    return {
-      responseDe: `Ich bin ${patient.age_years} Jahre alt.`,
-      responseClass: "neutral_default",
-    };
-  }
-  if (intent === "biography.occupation") {
-    return {
-      responseDe: `Ich arbeite als ${patient.occupation_de}.`,
-      responseClass: "neutral_default",
-    };
-  }
-  return {
-    responseDe: scenario.fallbacks.unknown_de,
-    responseClass: "patient_unknown",
-  };
-}
 
 function buildBroadResponse(
   scenario: SleScenario,
@@ -216,14 +188,55 @@ export function resolvePatientResponse(
 
   const bioIntent = inferBiographyIntent(input);
   if (bioIntent) {
-    const bio = buildBiographyResponse(bioIntent, scenario);
+    if (bioIntent === "biography.repeat") {
+      if (session.lastBiographyResponseDe) {
+        return {
+          responseDe: session.lastBiographyResponseDe,
+          responseClass: "neutral_default",
+          revealedFactIds: [],
+          blockedFactIds: [],
+          matchedKeywords: [],
+          intent: "biography.repeat",
+          questionQuality,
+        };
+      }
+      const repeatTarget = inferRepeatBiographyIntent(input);
+      if (repeatTarget) {
+        const bio = buildBiographyResponse(repeatTarget, scenario, input);
+        session.lastBiographyResponseDe = bio.responseDe;
+        return {
+          responseDe: bio.responseDe,
+          responseClass: bio.responseClass,
+          revealedFactIds: [],
+          blockedFactIds: [],
+          matchedKeywords: [],
+          intent: "biography.repeat",
+          questionQuality,
+        };
+      }
+    } else {
+      const bio = buildBiographyResponse(bioIntent, scenario, input);
+      session.lastBiographyResponseDe = bio.responseDe;
+      return {
+        responseDe: bio.responseDe,
+        responseClass: bio.responseClass,
+        revealedFactIds: [],
+        blockedFactIds: [],
+        matchedKeywords: [],
+        intent: bioIntent,
+        questionQuality,
+      };
+    }
+  }
+
+  if (isChiefComplaintOpenerQuestion(input)) {
     return {
-      responseDe: bio.responseDe,
-      responseClass: bio.responseClass,
+      responseDe: scenario.opening.statement_de,
+      responseClass: "case_positive",
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
-      intent: bioIntent,
+      intent: "chief_complaint.opener",
       questionQuality,
     };
   }

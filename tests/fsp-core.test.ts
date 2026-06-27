@@ -31,9 +31,9 @@ describe("canonical case opening", () => {
     const session = store.create(scenario);
     const opening = session.transcriptTurns[0]?.content ?? "";
 
-    expect(opening).toContain("sechs Wochen");
+    expect(opening).toContain("Schmerzen");
     expect(opening).toContain("Handgelenke");
-    expect(opening).toContain("Sonne");
+    expect(opening).not.toMatch(/Sonne|erschöpft|Temperatur/i);
     expect(scenario.patient.display_name).toBe("Frau Leonie Hartmann");
     expect(scenario.metadata.content_status).toBe("RECONCILED_V1");
   });

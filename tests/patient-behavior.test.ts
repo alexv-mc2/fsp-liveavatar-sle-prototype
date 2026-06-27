@@ -40,11 +40,18 @@ function parseSseContent(body: string): string {
   return contentEvent?.choices?.[0]?.delta?.content ?? "";
 }
 
-function ask(userText: string) {
+function ask(userText: string, sessionId?: string) {
   return processChatCompletion(
-    { messages: [{ role: "user", content: userText }] },
+    {
+      messages: [{ role: "user", content: userText }],
+      ...(sessionId ? { session_id: sessionId } : {}),
+    },
     { store, scenario },
   );
+}
+
+function askInSession(userText: string, sessionId: string) {
+  return ask(userText, sessionId);
 }
 
 describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
@@ -65,6 +72,111 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
     it("returns occupation from patient block", () => {
       const response = ask("Was machen Sie beruflich?");
       expect(response.choices[0].message.content).toContain("Grundschullehrerin");
+    });
+
+    it("returns full name spelling", () => {
+      const response = ask("Buchstabieren Sie bitte Ihren Namen");
+      expect(response.choices[0].message.content).toBe(
+        "Mein Vorname ist L-E-O-N-I-E, mein Nachname H-A-R-T-M-A-N-N.",
+      );
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.full_name_spelling");
+    });
+
+    it("returns given name spelling", () => {
+      const response = ask("Können Sie Ihren Vornamen buchstabieren?");
+      expect(response.choices[0].message.content).toBe("L-E-O-N-I-E");
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.given_name_spelling");
+    });
+
+    it("returns family name spelling", () => {
+      const response = ask("Können Sie Ihren Nachnamen buchstabieren?");
+      expect(response.choices[0].message.content).toBe("H-A-R-T-M-A-N-N");
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.family_name_spelling");
+    });
+
+    it("repeats the last biography answer on wiederholen", () => {
+      const session = store.create(scenario);
+      const first = askInSession("Wie heißen Sie?", session.id);
+      expect(first.choices[0].message.content).toBe("Ich heiße Leonie Hartmann.");
+
+      const repeat = askInSession("Können Sie das bitte wiederholen?", session.id);
+      expect(repeat.choices[0].message.content).toBe("Ich heiße Leonie Hartmann.");
+      expect(repeat.x_fsp.patient_behavior?.intent).toBe("biography.repeat");
+      expect(repeat.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+    });
+
+    it("returns date of birth in spoken form", () => {
+      const response = ask("Wann sind Sie geboren?");
+      expect(response.choices[0].message.content).toBe(
+        "Ich bin am vierzehnter Februar neunzehnhundertsiebenundneunzig geboren.",
+      );
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.dob");
+    });
+
+    it("returns written Geburtsdatum", () => {
+      const response = ask("Wie ist Ihr Geburtsdatum?");
+      expect(response.choices[0].message.content).toBe("Mein Geburtsdatum ist der 14.02.1997.");
+    });
+
+    it("returns height in lay German", () => {
+      const response = ask("Wie groß sind Sie?");
+      expect(response.choices[0].message.content).toBe("Ich bin ungefähr 168 Zentimeter groß.");
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.height");
+    });
+
+    it("returns current weight only when asked generally", () => {
+      const response = ask("Wie viel wiegen Sie?");
+      expect(response.choices[0].message.content).toBe("Ich wiege ungefähr 59 Kilo.");
+      expect(response.choices[0].message.content).not.toMatch(/62|früher/i);
+    });
+
+    it("returns previous weight only when weight change is asked", () => {
+      const response = ask("Wie viel wiegen Sie, und wie war Ihr Gewicht früher?");
+      expect(response.choices[0].message.content).toMatch(/59 Kilo/);
+      expect(response.choices[0].message.content).toMatch(/62 Kilo/);
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.weight_change");
+    });
+
+    it("returns Hausarzt from patient block", () => {
+      const response = ask("Wie heißt Ihr Hausarzt?");
+      expect(response.choices[0].message.content).toBe(
+        "Mein Hausarzt ist Dr. Markus Schneider in der Hausarztpraxis Dr. Schneider in Düsseldorf.",
+      );
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.gp");
+    });
+  });
+
+  describe("chief complaint opener (asked-only lay language)", () => {
+    const openerQuestions = [
+      "Warum sind Sie gekommen?",
+      "Was führt Sie zu uns?",
+      "Was ist Ihr Problem?",
+    ] as const;
+
+    it.each(openerQuestions)("opener %s gives only main joint complaint", (question) => {
+      const response = ask(question);
+      const content = response.choices[0].message.content;
+      expect(content).toMatch(/Schmerzen.*Hand/i);
+      expect(content).not.toMatch(/müde|erschöpft|Temperatur|Sonne|Gesicht|Kilo|Blut/i);
+      expect(response.x_fsp.patient_behavior?.intent).toBe("chief_complaint.opener");
+    });
+
+    it.each([
+      ["Sind Sie müde oder erschöpft?", /müde|erschöpft|erledigt/i],
+      ["Haben Sie eine Rötung im Gesicht bemerkt?", /Wangen|Nase|Rötung/i],
+      ["Hatten Sie erhöhte Temperatur?", /37,8|38,2|Temperatur|Fieber/i],
+      ["Haben Sie ungewollt abgenommen?", /Kilo|abgenommen/i],
+    ] as const)("follow-up %s is answered when specifically asked", (question, pattern) => {
+      const response = ask(question);
+      expect(response.choices[0].message.content).toMatch(pattern);
+    });
+
+    it("does not volunteer fatigue on opener but answers müde when asked", () => {
+      const opener = ask("Warum sind Sie gekommen?");
+      expect(opener.choices[0].message.content).not.toMatch(/müde|erschöpft/i);
+
+      const followUp = ask("Fühlen Sie sich müde?");
+      expect(followUp.choices[0].message.content).toMatch(/müde|erledigt/i);
     });
   });
 

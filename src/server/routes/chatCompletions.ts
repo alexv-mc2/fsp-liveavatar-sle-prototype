@@ -151,6 +151,7 @@ function buildVadNoopResponse(
           factRevealEvents: [],
           safetyFlags: [],
           patientQuestionIndex: 0,
+          lastBiographyResponseDe: null,
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         } satisfies SerializedSessionState);

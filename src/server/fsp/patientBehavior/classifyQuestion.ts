@@ -169,18 +169,90 @@ export function isBroadQuestion(input: string): boolean {
   return BROAD_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
+const CHIEF_COMPLAINT_OPENER_PATTERNS = [
+  /\bwarum sind sie gekommen\b/,
+  /\bwas fuhrt sie\b/,
+  /\bwas fuehrt sie\b/,
+  /\bwas ist ihr problem\b/,
+  /\bweshalb sind sie\b/,
+  /\bwas bringt sie\b/,
+];
+
+export function isChiefComplaintOpenerQuestion(input: string): boolean {
+  const normalized = normalizePatientText(input);
+  return CHIEF_COMPLAINT_OPENER_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 export function inferBiographyIntent(input: string): string | null {
   const normalized = normalizePatientText(input);
-  if (/\b(wie alt|alter|geboren|geburtsdatum|jahre alt)\b/.test(normalized)) {
-    return "biography.age";
+
+  if (/\b(wiederholen|noch einmal|nochmal|repeat)\b/.test(normalized)) {
+    return "biography.repeat";
+  }
+
+  if (
+    /\b(vorname|vornamen)\b/.test(normalized) &&
+    /\bbuchstab/.test(normalized)
+  ) {
+    return "biography.given_name_spelling";
   }
   if (
-    /\b(wie heissen|wie heißen|wie heisst|wie heißt|ihr name|name|vornamen|nachname|buchstabieren)\b/.test(
+    /\b(nachname|nachnamen)\b/.test(normalized) &&
+    /\bbuchstab/.test(normalized)
+  ) {
+    return "biography.family_name_spelling";
+  }
+  if (/\bbuchstab/.test(normalized) && /\b(name|namen)\b/.test(normalized)) {
+    return "biography.full_name_spelling";
+  }
+
+  if (
+    /\b(hausarzt|hausarztin|hausarztpraxis|family doctor)\b/.test(normalized)
+  ) {
+    return "biography.gp";
+  }
+
+  if (
+    /\b(groesse|koerpergroesse|wie gross|wie gross sind|körpergröße)\b/.test(normalized)
+  ) {
+    return "biography.height";
+  }
+
+  if (
+    /\b(fruher|frueher)\b/.test(normalized) &&
+    /\b(gewicht|wiegen|kilo|wogen)\b/.test(normalized)
+  ) {
+    return "biography.weight_change";
+  }
+  if (/\b(gewicht|wie viel wiegen|wiegen sie|wie viel wiegst)\b/.test(normalized)) {
+    return "biography.weight";
+  }
+
+  if (
+    /\b(geburtsdatum|geboren|geburtstag|geb|wann sind sie geboren|datum der geburt)\b/.test(
+      normalized,
+    ) ||
+    (/\bdatum\b/.test(normalized) && /\b(geburt|geboren)\b/.test(normalized))
+  ) {
+    return "biography.dob";
+  }
+  if (/\b(wie alt|alter|jahre alt)\b/.test(normalized)) {
+    return "biography.age";
+  }
+
+  if (
+    /\b(vorname|vornamen|nachname|nachnamen)\b/.test(normalized) &&
+    !/\bbuchstab/.test(normalized)
+  ) {
+    return "biography.name";
+  }
+
+  if (
+    /\b(wie heissen|wie heißen|wie heisst|wie heißt|ihr name|name|nennen)\b/.test(
       normalized,
     ) ||
     /\bnennen\b.*\b(sie|sich)\b/.test(normalized) ||
     /\bwer sind\b/.test(normalized) ||
-    /\bvorname\b/.test(normalized) ||
     /^wie heis(s)?t\b/.test(normalized) ||
     /^wie nennen\b/.test(normalized)
   ) {
