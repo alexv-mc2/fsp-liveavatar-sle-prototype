@@ -103,8 +103,48 @@ export function getVagueClarifyKey(input: string): string | null {
   return null;
 }
 
+const LAB_RESULT_TERMS =
+  /\b(wert|werte|befund|befunde|ergebnis|resultat|laborwert|blutwert)\b/;
+
+const LAB_QUESTION_MARKERS =
+  /\b(was|wie|wissen|kennen|steht|sagen|zeigt|haben sie|ist mit|mit dem|mit der|mit ihrem|mit ihren)\b/;
+
+/** Generic lab-result phrasing when STT drops ANA/Titer jargon (LiveAvatar). */
+export function isDejargonizedLabResultQuestion(input: string): boolean {
+  const normalized = normalizePatientText(input);
+  if (!LAB_RESULT_TERMS.test(normalized)) {
+    return false;
+  }
+  if (
+    /\b(schmerz|schmerzen|beschwerde|husten|ubelkeit|uebelkeit)\b/.test(normalized) &&
+    !/\b(labor|blut|befund|ergebnis|resultat|wert|werte)\b/.test(normalized)
+  ) {
+    return false;
+  }
+  return normalized.includes("?") || LAB_QUESTION_MARKERS.test(normalized);
+}
+
+export function isRaynaudColorQuestion(input: string): boolean {
+  const normalized = normalizePatientText(input);
+  if (/\braynaud\b/.test(normalized)) {
+    return true;
+  }
+  if (/\b(kalte finger|finger bei kalt|finger bei kaelt)\b/.test(normalized)) {
+    return true;
+  }
+  const hasFinger = /\b(finger|fingerkuppe)\b/.test(normalized);
+  const hasColorCold =
+    /\b(kalt|kalte|kälte|kaelt|weiss|weisse|blau|blasse|verfarb|verfaerb)\b/.test(
+      normalized,
+    );
+  return hasFinger && hasColorCold;
+}
+
 export function getExaminerOnlyIntent(input: string): string | null {
   const normalized = normalizePatientText(input);
+  if (isDejargonizedLabResultQuestion(input)) {
+    return "laboratory";
+  }
   for (const { pattern, intent } of EXAMINER_ONLY_PATTERNS) {
     if (pattern.test(normalized)) {
       return intent;
@@ -129,15 +169,20 @@ export function isBroadQuestion(input: string): boolean {
 
 export function inferBiographyIntent(input: string): string | null {
   const normalized = normalizePatientText(input);
-  if (
-    /\b(wie heissen|wie heißen|ihr name|name|vornamen|nachname|buchstabieren)\b/.test(
-      normalized,
-    )
-  ) {
-    return "biography.name";
-  }
   if (/\b(wie alt|alter|geboren|geburtsdatum|jahre alt)\b/.test(normalized)) {
     return "biography.age";
+  }
+  if (
+    /\b(wie heissen|wie heißen|wie heisst|wie heißt|ihr name|name|vornamen|nachname|buchstabieren)\b/.test(
+      normalized,
+    ) ||
+    /\bnennen\b.*\b(sie|sich)\b/.test(normalized) ||
+    /\bwer sind\b/.test(normalized) ||
+    /\bvorname\b/.test(normalized) ||
+    /^wie heis(s)?t\b/.test(normalized) ||
+    /^wie nennen\b/.test(normalized)
+  ) {
+    return "biography.name";
   }
   if (/\b(beruf|beruflich|arbeiten sie|was machen sie beruflich)\b/.test(normalized)) {
     return "biography.occupation";

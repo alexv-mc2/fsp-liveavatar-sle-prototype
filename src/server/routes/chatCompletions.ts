@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { liveAvatarDiagnosticStore } from "../debug/liveAvatarDiagnosticStore";
+import { sanitizeUserTextPrefix } from "../debug/diagnosticSanitize";
 import {
   buildCallbackRouteProof,
 } from "../debug/routeProof";
@@ -360,6 +361,15 @@ export async function handleChatCompletionPost(request: Request) {
       body !== null &&
       (body as { stream?: unknown }).stream === true;
 
+    const parsedRequest = OpenAIChatCompletionRequestSchema.safeParse(body);
+    const latestUserResolution = parsedRequest.success
+      ? resolveLatestUserMessage(parsedRequest.data.messages)
+      : null;
+    const latestUserTextPrefix =
+      latestUserResolution?.kind === "text"
+        ? sanitizeUserTextPrefix(latestUserResolution.text)
+        : null;
+
     const result = processChatCompletion(body, { headerSessionId });
 
     const latencyMs = Date.now() - startedAt;
@@ -391,6 +401,10 @@ export async function handleChatCompletionPost(request: Request) {
       has_assistant_content: Boolean(result.choices[0]?.message.content),
       assistant_content_len: result.choices[0]?.message.content?.length ?? 0,
       diagnostic_run_id: diagnosticRunId ?? null,
+      latest_user_text_prefix: latestUserTextPrefix,
+      patient_behavior_present: Boolean(result.x_fsp.patient_behavior),
+      response_class: result.x_fsp.patient_behavior?.response_class ?? null,
+      patient_behavior_intent: result.x_fsp.patient_behavior?.intent ?? null,
       ...routeProof,
     };
 

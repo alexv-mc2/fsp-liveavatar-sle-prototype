@@ -68,6 +68,61 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
     });
   });
 
+  describe("LiveAvatar STT alias regression (run 1e8567c2)", () => {
+    it.each([
+      ["Wie nennen Sie sich?", "Leonie Hartmann", "biography.name"],
+      ["Wie ist Ihr Vorname?", "Leonie Hartmann", "biography.name"],
+      ["Wie heißt", "Leonie Hartmann", "biography.name"],
+      ["Wer sind Sie?", "Leonie Hartmann", "biography.name"],
+      ["Wie heißen Sie?", "Leonie Hartmann", "biography.name"],
+    ] as const)("name STT variant %s", (question, expectedSnippet, intent) => {
+      const response = ask(question);
+      expect(response.choices[0].message.content).toContain(expectedSnippet);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("neutral_default");
+      expect(response.x_fsp.patient_behavior?.intent).toBe(intent);
+    });
+
+    it("preserves age matching alongside name aliases", () => {
+      const response = ask("Wie alt sind Sie?");
+      expect(response.choices[0].message.content).toBe("Ich bin 29 Jahre alt.");
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.age");
+    });
+
+    it("blocks de-jargonized lab Wert phrasing from run 1e8567c2", () => {
+      const response = ask("Was ist mit dem Wert bitte?");
+      expect(response.choices[0].message.content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+    });
+
+    it("blocks canonical ANA-Titer phrasing", () => {
+      const response = ask("Wie hoch ist Ihr ANA-Titer?");
+      expect(response.choices[0].message.content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
+    });
+
+    it("routes Raynaud color-change before joint finger pain", () => {
+      const session = store.create(scenario);
+      session.phase = "anamnesis_active";
+      const resolution = resolvePatientResponse(
+        "Werden Ihre Finger bei Kälte weiß oder blau?",
+        session,
+        scenario,
+      );
+      expect(resolution.responseClass).toBe("case_negative");
+      expect(resolution.responseDe).toMatch(/Nein.*weiß|blau/i);
+      expect(resolution.responseDe).not.toMatch(/Handgelenk|Fingergrund/i);
+      expect(resolution.revealedFactIds).toContain("raynaud_negative");
+      expect(resolution.revealedFactIds).not.toContain("joint_pain_pattern");
+    });
+
+    it("still routes ordinary finger joint pain to joint facts", () => {
+      const response = ask("Haben Sie Schmerzen in den Fingern?");
+      expect(response.choices[0].message.content).toMatch(/Handgelenk|Finger/i);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("case_positive");
+    });
+  });
+
   describe("SLE-path positives (case_positive)", () => {
     it("reveals joint pain pattern", () => {
       const response = ask("Haben Sie Gelenkschmerzen?");
@@ -276,6 +331,24 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
       const content = parseSseContent(await response.text());
       expect(content).not.toContain("95 IU");
       expect(content).toMatch(/Laborwerte|Unterlagen/i);
+    });
+
+    it("stream:true resolves STT name alias Wie nennen Sie sich?", async () => {
+      const response = await postChat({
+        stream: true,
+        messages: [{ role: "user", content: "Wie nennen Sie sich?" }],
+      });
+      const content = parseSseContent(await response.text());
+      expect(content).toContain("Leonie Hartmann");
+    });
+
+    it("non-streaming resolves de-jargonized lab Wert phrasing", async () => {
+      const response = await postChat({
+        messages: [{ role: "user", content: "Was ist mit dem Wert bitte?" }],
+      });
+      const body = await response.json();
+      expect(body.choices[0].message.content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(body.x_fsp.patient_behavior.response_class).toBe("examiner_only_block");
     });
   });
 });

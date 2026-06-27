@@ -61,3 +61,12 @@ export function prefixUuid(value: string | undefined | null): string | undefined
   }
   return value.length >= 8 ? `${value.slice(0, 8)}…` : value;
 }
+
+/** Sanitized user transcript prefix for custom-LLM logs (no full PHI). */
+export function sanitizeUserTextPrefix(text: string, maxLen = 48): string {
+  const trimmed = text.trim().replace(/\s+/g, " ");
+  if (!trimmed) {
+    return "";
+  }
+  return trimmed.length > maxLen ? `${trimmed.slice(0, maxLen)}…` : trimmed;
+}

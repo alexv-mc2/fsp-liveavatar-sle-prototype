@@ -9,6 +9,7 @@ import {
   isBroadQuestion,
   isJargonQuestion,
   isLeadingQuestion,
+  isRaynaudColorQuestion,
 } from "./classifyQuestion";
 import { matchScenarioFacts } from "./factMatcher";
 import { normalizePatientText } from "./normalize";
@@ -250,6 +251,10 @@ export function resolvePatientResponse(
     excludeFactIds.push("medication_ibuprofen");
   } else if (substanceIntent === "alcohol") {
     preferFactIds.push("alcohol_occasional");
+  }
+  if (isRaynaudColorQuestion(input)) {
+    preferFactIds.push("raynaud_negative");
+    excludeFactIds.push("joint_pain_pattern");
   }
 
   const factMatches = matchScenarioFacts(scenario.facts, normalizedInput, {
