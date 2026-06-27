@@ -2,7 +2,9 @@ const SECRET_KEY_PATTERN =
   /secret|token|api[_-]?key|authorization|password|bearer/i;
 
 function sanitizeStringValue(key: string, value: string): string {
-  if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) {
+  if (
+    /^[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}$/.test(value)
+  ) {
     return `[jwt:${value.length}]`;
   }
   if (SECRET_KEY_PATTERN.test(key)) {

@@ -21,13 +21,15 @@ function makeRun(events: DiagnosticRun["events"], ended = false): DiagnosticRun 
 describe("sanitizeDiagnosticPayload", () => {
   it("redacts jwt-like strings and secret keys", () => {
     const sanitized = sanitizeDiagnosticPayload({
-      session_token: "aaa.bbb.ccc",
+      session_token: "aaaaaaaaaa.bbbbbbbbbb.cccccccccc",
       api_key: "super-secret",
+      api_base_host: "api.liveavatar.com",
       session_id_prefix: "11111111",
     });
 
-    expect(sanitized?.session_token).toBe("[jwt:11]");
+    expect(sanitized?.session_token).toBe("[jwt:32]");
     expect(sanitized?.api_key).toBe("[redacted]");
+    expect(sanitized?.api_base_host).toBe("api.liveavatar.com");
     expect(sanitized?.session_id_prefix).toBe("11111111");
   });
 
