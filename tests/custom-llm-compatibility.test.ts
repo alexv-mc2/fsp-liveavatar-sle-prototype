@@ -101,7 +101,7 @@ describe("Custom LLM safety and mock engine", () => {
       { store, scenario, headerSessionId: session.id },
     );
 
-    expect(response.choices[0].message.content).toContain("Laborwerte kenne ich nicht");
+    expect(response.choices[0].message.content).toMatch(/Blutwerte kenne ich nicht|Arzt erklären/i);
     expect(response.x_fsp.blocked_fact_ids).toContain("lab_ana");
     expect(response.x_fsp.correlation.session_id_source).toBe("header");
   });

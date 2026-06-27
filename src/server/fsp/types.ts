@@ -41,8 +41,19 @@ export const SleScenarioSchema = z.object({
   }),
   patient: z.object({
     display_name: z.string().min(1),
+    given_name: z.string().min(1),
+    family_name: z.string().min(1),
+    given_name_spelling_de: z.string().min(1),
+    family_name_spelling_de: z.string().min(1),
+    date_of_birth: z.string().min(1),
+    date_of_birth_spoken_de: z.string().min(1),
     sex_de: z.string().min(1),
     age_years: z.number().int().positive(),
+    height_spoken_de: z.string().min(1),
+    weight_current_spoken_de: z.string().min(1),
+    weight_previous_spoken_de: z.string().min(1),
+    gp_name_de: z.string().min(1),
+    gp_practice_de: z.string().min(1),
     occupation_de: z.string().min(1),
     family_status_de: z.string().min(1),
     emotional_state_de: z.string().min(1),
@@ -102,6 +113,7 @@ export interface SessionState {
   factRevealEvents: FactRevealEvent[];
   safetyFlags: string[];
   patientQuestionIndex: number;
+  lastPatientResponseDe: string | null;
   startedAt: string;
   updatedAt: string;
   endedAt?: string;
@@ -117,6 +129,7 @@ export interface SerializedSessionState {
   factRevealEvents: FactRevealEvent[];
   safetyFlags: string[];
   patientQuestionIndex: number;
+  lastPatientResponseDe: string | null;
   startedAt: string;
   updatedAt: string;
   endedAt?: string;

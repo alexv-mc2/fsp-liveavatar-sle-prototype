@@ -12,6 +12,7 @@ import {
   fetchLiveAvatarLlmConfigurationBaseUrl,
   LiveAvatarApiError,
   mintLiveAvatarSessionToken,
+  type LiveAvatarTokenRequestDiagnostics,
 } from "./liveAvatarApi";
 
 export const CreateHeyGenSessionTokenRequestSchema = z.object({
@@ -43,6 +44,7 @@ export interface HeyGenSessionTokenSuccessResponse {
   session_token: string;
   custom_llm_url: string | null;
   interactivity_type: "PUSH_TO_TALK" | "CONVERSATIONAL";
+  max_session_seconds: number;
   correlation: {
     header: "x-fsp-session-id";
     body_fields: ["session_id", "metadata.session_id"];
@@ -125,7 +127,6 @@ export function createHeyGenSessionTokenNotConfigured(
   input: unknown,
 ): HeyGenSessionTokenNotConfiguredResponse {
   const parsed = CreateHeyGenSessionTokenRequestSchema.parse(input);
-  sessionStore.require(parsed.fsp_session_id);
 
   const env = readHeyGenEnvSnapshot();
   const customLlmUrl = env.publicBaseUrl
@@ -151,10 +152,21 @@ export function createHeyGenSessionTokenNotConfigured(
 
 export async function createHeyGenSessionToken(
   input: unknown,
-  deps: { fetchFn?: typeof fetch } = {},
+  deps: {
+    fetchFn?: typeof fetch;
+    onDiagnostics?: (event: LiveAvatarTokenRequestDiagnostics) => void;
+  } = {},
 ): Promise<HeyGenSessionTokenSuccessResponse | HeyGenSessionTokenNotConfiguredResponse> {
   const parsed = CreateHeyGenSessionTokenRequestSchema.parse(input);
-  sessionStore.require(parsed.fsp_session_id);
+  const sessionPresent = Boolean(sessionStore.get(parsed.fsp_session_id));
+  deps.onDiagnostics?.({
+    phase: "session_token_session_lookup",
+    payload: {
+      session_present: sessionPresent,
+      session_id_prefix: parsed.fsp_session_id.slice(0, 8),
+      persistence: "in_memory_optional_for_liveavatar_token",
+    },
+  });
 
   const runtimeConfig = readLiveAvatarRuntimeConfig();
   if (!runtimeConfig) {
@@ -164,7 +176,10 @@ export async function createHeyGenSessionToken(
   const minted = await mintLiveAvatarSessionToken(
     runtimeConfig,
     deps.fetchFn ?? fetch,
-    { fspSessionId: parsed.fsp_session_id },
+    {
+      fspSessionId: parsed.fsp_session_id,
+      onDiagnostics: deps.onDiagnostics,
+    },
   );
 
   const llmConfigBaseUrl =
@@ -178,6 +193,7 @@ export async function createHeyGenSessionToken(
     session_token: minted.sessionToken,
     custom_llm_url: runtimeConfig.customLlmUrl,
     interactivity_type: runtimeConfig.interactivityType,
+    max_session_seconds: minted.maxSessionSeconds,
     correlation: {
       header: "x-fsp-session-id",
       body_fields: ["session_id", "metadata.session_id"],
