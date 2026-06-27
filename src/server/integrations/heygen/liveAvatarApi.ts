@@ -16,7 +16,10 @@ export type CreateSessionTokenData = {
 };
 
 export type LiveAvatarTokenRequestDiagnostics = {
-  phase: "liveavatar_token_request" | "liveavatar_token_response";
+  phase:
+    | "liveavatar_token_request"
+    | "liveavatar_token_response"
+    | "session_token_session_lookup";
   payload: Record<string, unknown>;
 };
 

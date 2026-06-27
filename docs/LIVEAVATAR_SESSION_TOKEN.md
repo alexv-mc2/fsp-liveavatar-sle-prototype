@@ -66,6 +66,8 @@ The 18-minute manual-review expectation remains a HeyGen/provider configuration 
 5. `POST /api/integrations/heygen/session-token` with `{ "fsp_session_id": "<uuid>" }` → `status: ok`, `session_token`, `provider_session_id`
 6. Open `https://fsp-liveavatar-sle-prototype.vercel.app/liveavatar` — create FSP session, connect LiveAvatar, test Push-to-Talk
 
+`fsp_session_id` is validated as a UUID and passed to LiveAvatar as a correlation/dynamic variable. The session-token route does not require the same serverless instance to still hold the in-memory FSP session; otherwise Preview can fail intermittently when `/api/sessions` and `/api/integrations/heygen/session-token` land on different lambdas.
+
 **Known limitation:** production tokens currently mint **without `voice_id`** (voice binding deferred). Avatar video may work; ElevenLabs speech depends on HeyGen-side wiring until `HEYGEN_LIVEAVATAR_VOICE_ID` is re-enabled with a valid UUID.
 
 ## Local setup scripts (never commit secrets)

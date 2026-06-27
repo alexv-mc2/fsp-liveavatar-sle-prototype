@@ -127,7 +127,6 @@ export function createHeyGenSessionTokenNotConfigured(
   input: unknown,
 ): HeyGenSessionTokenNotConfiguredResponse {
   const parsed = CreateHeyGenSessionTokenRequestSchema.parse(input);
-  sessionStore.require(parsed.fsp_session_id);
 
   const env = readHeyGenEnvSnapshot();
   const customLlmUrl = env.publicBaseUrl
@@ -159,7 +158,15 @@ export async function createHeyGenSessionToken(
   } = {},
 ): Promise<HeyGenSessionTokenSuccessResponse | HeyGenSessionTokenNotConfiguredResponse> {
   const parsed = CreateHeyGenSessionTokenRequestSchema.parse(input);
-  sessionStore.require(parsed.fsp_session_id);
+  const sessionPresent = Boolean(sessionStore.get(parsed.fsp_session_id));
+  deps.onDiagnostics?.({
+    phase: "session_token_session_lookup",
+    payload: {
+      session_present: sessionPresent,
+      session_id_prefix: parsed.fsp_session_id.slice(0, 8),
+      persistence: "in_memory_optional_for_liveavatar_token",
+    },
+  });
 
   const runtimeConfig = readLiveAvatarRuntimeConfig();
   if (!runtimeConfig) {

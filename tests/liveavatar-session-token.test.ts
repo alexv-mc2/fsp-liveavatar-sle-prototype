@@ -254,6 +254,43 @@ describe("LiveAvatar session token minting", () => {
     const serialized = JSON.stringify(payload);
     expect(serialized).not.toContain("test-api-key");
   });
+
+  it("mints token for a valid fsp_session_id even when in-memory session is on another serverless instance", async () => {
+    setConfiguredLiveAvatarEnv(false);
+    const fspSessionId = "11111111-1111-4111-8111-111111111111";
+    const diagnostics: unknown[] = [];
+
+    const fetchFn = vi.fn(async () =>
+      Response.json({
+        data: {
+          session_id: TEST_IDS.providerSession,
+          session_token: "provider-session-token-value",
+        },
+      }),
+    );
+
+    const payload = await createHeyGenSessionToken(
+      { fsp_session_id: fspSessionId },
+      {
+        fetchFn,
+        onDiagnostics: (event) => diagnostics.push(event),
+      },
+    );
+
+    expect(payload.status).toBe("ok");
+    if (payload.status === "ok") {
+      expect(payload.fsp_session_id).toBe(fspSessionId);
+      expect(payload.max_session_seconds).toBe(1200);
+    }
+    expect(diagnostics).toContainEqual({
+      phase: "session_token_session_lookup",
+      payload: {
+        session_present: false,
+        session_id_prefix: "11111111",
+        persistence: "in_memory_optional_for_liveavatar_token",
+      },
+    });
+  });
 });
 
 describe("LiveAvatar session token route", () => {
