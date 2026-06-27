@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { parse } from "yaml";
 import { POST as chatRoutePost } from "@/app/v1/chat/completions/route";
 import { resolvePatientResponse } from "@/server/fsp/patientBehavior/resolvePatientResponse";
 import { loadScenario, clearScenarioCacheForTests } from "@/server/fsp/scenarioLoader";
@@ -7,6 +10,7 @@ import { processChatCompletion } from "@/server/routes/chatCompletions";
 
 const scenario = loadScenario();
 let store: InMemorySessionStore;
+const repoRoot = join(import.meta.dirname, "..");
 
 beforeEach(() => {
   clearScenarioCacheForTests();
@@ -54,7 +58,214 @@ function askInSession(userText: string, sessionId: string) {
   return ask(userText, sessionId);
 }
 
+type DialogueRegressionCase = {
+  id: string;
+  input: string;
+  expected_intent: string;
+  expected_response_class: string;
+  expected_contains_any?: string[];
+  forbidden_contains_any?: string[];
+};
+
+function includesAny(content: string, needles: string[] | undefined): boolean {
+  if (!needles || needles.length === 0) {
+    return true;
+  }
+  const normalized = content.toLocaleLowerCase("de-DE");
+  return needles.some((needle) =>
+    normalized.includes(needle.toLocaleLowerCase("de-DE")),
+  );
+}
+
+function includesForbidden(content: string, needles: string[] | undefined): string | null {
+  if (!needles || needles.length === 0) {
+    return null;
+  }
+  const normalized = content.toLocaleLowerCase("de-DE");
+  return (
+    needles.find((needle) =>
+      normalized.includes(needle.toLocaleLowerCase("de-DE")),
+    ) ?? null
+  );
+}
+
 describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
+  describe("DeepSearch dialogue data layer files", () => {
+    const expectedFiles = [
+      "docs/research/FSP_Patient_Avatar_Universal_Dialogue_DeepSearch_DE.md",
+      "docs/FSP_PATIENT_DIALOGUE_DATA_LAYER.md",
+      "content/fsp-dialogue/universal_intents.yaml",
+      "content/fsp-dialogue/patient_dialogue_policy.yaml",
+      "content/fsp-dialogue/fsp_bad_german_aliases.yaml",
+      "content/fsp-dialogue/fsp_stt_noise_aliases.yaml",
+      "content/fsp-dialogue/examiner_only_blocks.yaml",
+      "content/fsp-nrw-sle/dialogue/frau_hartmann_dialogue_case_pack.yaml",
+      "content/fsp-nrw-sle/dialogue/frau_hartmann_regression_matrix.yaml",
+    ] as const;
+
+    it.each(expectedFiles)("has required dialogue artifact %s", (relativePath) => {
+      expect(existsSync(join(repoRoot, relativePath))).toBe(true);
+    });
+
+    it("stores at least 150 regression cases for future corpus growth", () => {
+      const matrixPath = join(
+        repoRoot,
+        "content/fsp-nrw-sle/dialogue/frau_hartmann_regression_matrix.yaml",
+      );
+      const matrix = parse(readFileSync(matrixPath, "utf8")) as {
+        cases?: unknown[];
+      };
+
+      expect(Array.isArray(matrix.cases)).toBe(true);
+      expect(matrix.cases?.length).toBeGreaterThanOrEqual(150);
+    });
+  });
+
+  describe("DeepSearch regression matrix", () => {
+    const matrixPath = join(
+      repoRoot,
+      "content/fsp-nrw-sle/dialogue/frau_hartmann_regression_matrix.yaml",
+    );
+    const matrix = parse(readFileSync(matrixPath, "utf8")) as {
+      cases: DialogueRegressionCase[];
+    };
+
+    it.each(matrix.cases)("$id routes '$input'", (entry) => {
+      const response = ask(entry.input);
+      const content = response.choices[0].message.content;
+      const forbidden = includesForbidden(content, entry.forbidden_contains_any);
+
+      expect(response.x_fsp.patient_behavior?.intent).toBe(entry.expected_intent);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe(
+        entry.expected_response_class,
+      );
+      expect(includesAny(content, entry.expected_contains_any)).toBe(true);
+      expect(forbidden).toBeNull();
+    });
+  });
+
+  describe("DeepSearch high-priority dialogue regressions", () => {
+    it.each([
+      ["Guten Tag.", /guten tag/i, "smalltalk.greeting"],
+      ["Hallo.", /hallo|guten tag/i, "smalltalk.greeting"],
+      ["Guten Morgen.", /guten morgen/i, "smalltalk.greeting"],
+      ["hi äh hallo", /hallo|guten tag/i, "smalltalk.greeting"],
+      ["Vielen Dank.", /gern|auf wiedersehen|bitte/i, "smalltalk.closing"],
+      ["Auf Wiedersehen.", /auf wiedersehen/i, "smalltalk.closing"],
+      ["Okay danke tschüss.", /tschüss|auf wiedersehen/i, "smalltalk.closing"],
+      ["Wir sind fertig.", /auf wiedersehen|danke/i, "smalltalk.closing"],
+    ] as const)("routes %s before unknown fallback", (question, expected, intent) => {
+      const response = ask(question);
+      const content = response.choices[0].message.content;
+
+      expect(content).toMatch(expected);
+      expect(content).not.toBe(scenario.fallbacks.unknown_de);
+      expect(response.x_fsp.patient_behavior?.intent).toBe(intent);
+    });
+
+    it("spells the full name for bare Buchstabieren instead of colliding with substances", () => {
+      const response = ask("Buchstabieren Sie bitte.");
+      const content = response.choices[0].message.content;
+
+      expect(content).toMatch(/Leonie: L .* E .* O .* N .* I .* E/i);
+      expect(content).toMatch(/Hartmann: H .* A .* R .* T .* M .* A .* N .* N/i);
+      expect(content).not.toMatch(/Alkohol|Drogen|Rauchen|Wein|Ibuprofen/i);
+      expect(response.x_fsp.patient_behavior?.intent).toBe(
+        "biography.full_name_spelling",
+      );
+    });
+
+    it.each([
+      ["What is your name bitte?", /Leonie Hartmann/i, "biography.name"],
+      ["Ihre Name bitte?", /Leonie Hartmann/i, "biography.name"],
+      ["Wann geboren?", /neunzehnhundertsiebenundneunzig|14\.02\.1997/i, "biography.dob"],
+      ["Wie alt Sie?", /29 Jahre/i, "biography.age"],
+      ["Wie groß Sie?", /168 Zentimeter/i, "biography.height"],
+      ["Gewicht?", /59 Kilo/i, "biography.weight"],
+      ["Haus Artz?", /Dr\. Markus Schneider/i, "biography.gp"],
+      ["Family doctor?", /Dr\. Markus Schneider/i, "biography.gp"],
+    ] as const)("recovers bad German / STT identity variant %s", (question, expected, intent) => {
+      const response = ask(question);
+
+      expect(response.choices[0].message.content).toMatch(expected);
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+      expect(response.x_fsp.patient_behavior?.intent).toBe(intent);
+    });
+
+    it("clarifies Hautarzt instead of routing to Hausarzt or living context", () => {
+      const response = ask("Hautarzt?");
+
+      expect(response.choices[0].message.content).toBe(
+        "Meinen Sie meinen Hausarzt oder einen Hautarzt?",
+      );
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("clarify");
+    });
+
+    it.each([
+      ["Was Problem?", /Schmerzen.*Hand|Hand.*Schmerzen/i],
+      ["Warum hier?", /Schmerzen.*Hand|Hand.*Schmerzen/i],
+    ] as const)("routes poor German opener %s to the configured main complaint", (question, expected) => {
+      const response = ask(question);
+      const content = response.choices[0].message.content;
+
+      expect(content).toMatch(expected);
+      expect(content).not.toMatch(/müde|erschöpft|Temperatur|Sonne|Gesicht|Kilo|Blut/i);
+      expect(response.x_fsp.patient_behavior?.intent).toBe("chief_complaint.opener");
+    });
+
+    it.each([
+      "Uh, hi. Hatten Sie",
+      "Können Sie das bitte",
+    ] as const)("asks for repetition on incomplete noisy fragment %s", (question) => {
+      const response = ask(question);
+
+      expect(response.choices[0].message.content).toBe(
+        "Entschuldigung, können Sie die Frage bitte wiederholen?",
+      );
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("clarify");
+    });
+
+    it.each([
+      ["Nochmal Geburtsdatum", /14\.02\.1997|neunzehnhundertsiebenundneunzig/i],
+      ["Noch einmal den Namen", /Leonie Hartmann/i],
+    ] as const)("answers object-specific repeat %s even without prior answer", (question, expected) => {
+      const response = ask(question);
+
+      expect(response.choices[0].message.content).toMatch(expected);
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+    });
+
+    it.each([
+      ["Hatten Sie Schüttelfrost?", /Nein, Schüttelfrost hatte ich nicht\./i, "case_negative"],
+      ["Haben Sie Asthma?", /Nein|nicht/i, "case_negative"],
+      ["Zecke?", /Nein|nicht/i, "case_negative"],
+      ["Herzrasen?", /Nein|nicht/i, "case_negative"],
+    ] as const)("answers wrong-path observable negative %s", (question, expected, responseClass) => {
+      const response = ask(question);
+
+      expect(response.choices[0].message.content).toMatch(expected);
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe(responseClass);
+    });
+
+    it.each([
+      ["Anatiter?", /Blutwerte kenne ich nicht/i, "laboratory"],
+      ["Anna Titer?", /Blutwerte kenne ich nicht/i, "laboratory"],
+      ["Kreatinin?", /Blutwerte kenne ich nicht/i, "laboratory"],
+      ["Proteinurie quantity?", /Blutwerte kenne ich nicht/i, "laboratory"],
+      ["Welche Behandlung empfehlen Sie?", /Behandlung wurde mir noch nicht erklärt/i, "treatment"],
+      ["Haben Sie SLE?", /bisher nicht gesagt/i, "diagnosis.hidden"],
+    ] as const)("blocks examiner-only %s", (question, expected, intent) => {
+      const response = ask(question);
+      const content = response.choices[0].message.content;
+
+      expect(content).toMatch(expected);
+      expect(content).not.toMatch(/1:640|95 IU|EULAR|Hydroxychloroquin|SLE\b/i);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
+      expect(response.x_fsp.patient_behavior?.intent).toBe(intent);
+    });
+  });
+
   describe("biography (patient_known from scenario.patient)", () => {
     it("returns name from patient block", () => {
       const response = ask("Wie heißen Sie?");

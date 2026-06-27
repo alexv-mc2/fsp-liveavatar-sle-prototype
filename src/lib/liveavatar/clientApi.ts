@@ -7,12 +7,105 @@ import type {
   HeyGenSessionTokenError,
   HeyGenSessionTokenNotConfigured,
   HeyGenSessionTokenOk,
+  LiveAvatarUiState,
 } from "./types";
 
 export type FetchFn = typeof fetch;
 
 export function isBridgeReady(status: HeyGenBridgeStatus): boolean {
   return status.session_token_configured && status.connected;
+}
+
+export type LiveAvatarReadinessInput = {
+  bridgeReady: boolean | null;
+  fspSessionId: string | null;
+  providerSessionId?: string | null;
+  uiState: LiveAvatarUiState;
+  streamReady?: boolean;
+  busy: boolean;
+};
+
+export type LiveAvatarReadiness = {
+  canStart: boolean;
+  canStop: boolean;
+  canUseVoice: boolean;
+  statusLabel: string;
+  statusTone: "default" | "pending" | "live" | "error" | "mock";
+};
+
+export function getLiveAvatarReadiness(
+  input: LiveAvatarReadinessInput,
+): LiveAvatarReadiness {
+  const streamReady = input.streamReady === true;
+  const hasFspSession = Boolean(input.fspSessionId);
+  const hasProviderSession = Boolean(input.providerSessionId);
+  const canStart =
+    input.bridgeReady === true &&
+    hasFspSession &&
+    input.uiState === "idle" &&
+    !input.busy;
+  const canStop =
+    input.uiState === "connected" ||
+    input.uiState === "starting" ||
+    input.uiState === "error";
+  const canUseVoice =
+    input.uiState === "connected" && hasProviderSession && streamReady && !input.busy;
+
+  if (input.bridgeReady === false || input.uiState === "unconfigured") {
+    return {
+      canStart: false,
+      canStop,
+      canUseVoice: false,
+      statusLabel: "Bridge nicht konfiguriert",
+      statusTone: "mock",
+    };
+  }
+  if (input.uiState === "error") {
+    return {
+      canStart: false,
+      canStop,
+      canUseVoice: false,
+      statusLabel: "Fehler",
+      statusTone: "error",
+    };
+  }
+  if (input.uiState === "starting") {
+    return {
+      canStart: false,
+      canStop,
+      canUseVoice: false,
+      statusLabel: hasProviderSession
+        ? "LiveAvatar startet"
+        : "Token wird vorbereitet",
+      statusTone: "pending",
+    };
+  }
+  if (input.uiState === "stopping") {
+    return {
+      canStart: false,
+      canStop,
+      canUseVoice: false,
+      statusLabel: "Beende",
+      statusTone: "pending",
+    };
+  }
+  if (input.uiState === "connected") {
+    return {
+      canStart: false,
+      canStop,
+      canUseVoice,
+      statusLabel: streamReady ? "Avatar bereit" : "Verbunden, warte auf Video",
+      statusTone: streamReady ? "live" : "pending",
+    };
+  }
+
+  return {
+    canStart,
+    canStop,
+    canUseVoice: false,
+    statusLabel: hasFspSession ? "Sitzung bereit" : "Sitzung fehlt",
+    statusTone: "default",
+  };
 }
 
 export function parseSessionTokenResponse(

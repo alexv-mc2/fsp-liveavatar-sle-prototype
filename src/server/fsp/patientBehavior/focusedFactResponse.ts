@@ -1,5 +1,7 @@
 import type { ScenarioFact } from "../types";
+import { loadPatientDialogueData } from "./dialogueData";
 import { normalizePatientText } from "./normalize";
+import { containsNormalizedTerm } from "./textMatch";
 
 /** One short lay sentence — only what was asked, no volunteered extras. */
 export function buildFocusedFactResponse(
@@ -7,6 +9,20 @@ export function buildFocusedFactResponse(
   input: string,
 ): string {
   const normalized = normalizePatientText(input);
+  const focused = loadPatientDialogueData().casePack.focused_answers[fact.id];
+
+  if (focused) {
+    for (const variant of focused.variants) {
+      if (
+        variant.when_any.some((term) =>
+          containsNormalizedTerm(normalized, normalizePatientText(term)),
+        )
+      ) {
+        return variant.answer_de;
+      }
+    }
+    return focused.default_de;
+  }
 
   switch (fact.id) {
     case "chief_fatigue":

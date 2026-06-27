@@ -1,5 +1,7 @@
 import type { ScenarioFact } from "../types";
 import { normalizePatientText, tokenizePatientText } from "./normalize";
+import { loadPatientDialogueData } from "./dialogueData";
+import { containsNormalizedTerm } from "./textMatch";
 import type { FactMatch } from "./types";
 
 const FACT_QUERY_ALIASES: Record<string, string[]> = {
@@ -54,10 +56,20 @@ function findFactMatches(fact: ScenarioFact, normalizedInput: string): FactMatch
   const matches: FactMatch[] = [];
   const inputTokens = new Set(tokenizePatientText(normalizedInput));
   const blocklist = TOKEN_BLOCKLIST_BY_FACT[fact.id];
+  const dialogueData = loadPatientDialogueData();
+  const configuredAliases = [
+    ...(dialogueData.casePack.fact_aliases[fact.id] ?? []),
+    ...dialogueData.badGermanAliases.aliases
+      .filter((alias) => alias.fact_id === fact.id)
+      .map((alias) => alias.input),
+    ...dialogueData.sttNoiseAliases.aliases
+      .filter((alias) => alias.fact_id === fact.id)
+      .map((alias) => alias.input),
+  ];
 
   for (const keyword of fact.trigger_keywords) {
     const normalizedKeyword = normalizePatientText(keyword);
-    if (normalizedKeyword && normalizedInput.includes(normalizedKeyword)) {
+    if (containsNormalizedTerm(normalizedInput, normalizedKeyword)) {
       matches.push({
         fact,
         keyword,
@@ -66,9 +78,12 @@ function findFactMatches(fact: ScenarioFact, normalizedInput: string): FactMatch
     }
   }
 
-  for (const alias of FACT_QUERY_ALIASES[fact.id] ?? []) {
+  for (const alias of [
+    ...(FACT_QUERY_ALIASES[fact.id] ?? []),
+    ...configuredAliases,
+  ]) {
     const normalizedAlias = normalizePatientText(alias);
-    if (normalizedAlias && normalizedInput.includes(normalizedAlias)) {
+    if (containsNormalizedTerm(normalizedInput, normalizedAlias)) {
       matches.push({
         fact,
         keyword: alias,

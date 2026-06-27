@@ -8,6 +8,7 @@ import {
 import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
 import { findLastAssistantResponse } from "../fsp/patientBehavior/conversationHistory";
+import { normalizePatientText } from "../fsp/patientBehavior/normalize";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
 import { buildAuthoritativePatientContext } from "../fsp/promptBuilder";
 import {
@@ -84,6 +85,9 @@ export interface OpenAIChatCompletionResponse {
       response_class: string;
       intent: string | null;
       question_quality: string[];
+      matched_fact_id?: string | null;
+      matched_alias_id?: string | null;
+      fallback_reason?: string | null;
     };
   };
 }
@@ -328,6 +332,9 @@ export function processChatCompletion(
             response_class: patientBehavior.responseClass,
             intent: patientBehavior.intent,
             question_quality: patientBehavior.questionQuality,
+            matched_fact_id: patientBehavior.matchedFactId ?? null,
+            matched_alias_id: patientBehavior.matchedAliasId ?? null,
+            fallback_reason: patientBehavior.fallbackReason ?? null,
           }
         : undefined,
     },
@@ -411,9 +418,15 @@ export async function handleChatCompletionPost(request: Request) {
       assistant_content_len: result.choices[0]?.message.content?.length ?? 0,
       diagnostic_run_id: diagnosticRunId ?? null,
       latest_user_text_prefix: latestUserTextPrefix,
+      normalized_user_text_prefix: latestUserTextPrefix
+        ? sanitizeUserTextPrefix(normalizePatientText(latestUserTextPrefix))
+        : null,
       patient_behavior_present: Boolean(result.x_fsp.patient_behavior),
       response_class: result.x_fsp.patient_behavior?.response_class ?? null,
       patient_behavior_intent: result.x_fsp.patient_behavior?.intent ?? null,
+      matched_fact_id: result.x_fsp.patient_behavior?.matched_fact_id ?? null,
+      matched_alias_id: result.x_fsp.patient_behavior?.matched_alias_id ?? null,
+      fallback_reason: result.x_fsp.patient_behavior?.fallback_reason ?? null,
       ...routeProof,
     };
 

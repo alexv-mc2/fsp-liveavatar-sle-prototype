@@ -1,4 +1,6 @@
 import { normalizePatientText } from "./normalize";
+import { loadPatientDialogueData } from "./dialogueData";
+import { containsNormalizedTerm, matchesAnyAlias, normalizedTokens } from "./textMatch";
 import type { QuestionQuality } from "./types";
 
 const JARGON_TERMS = [
@@ -32,9 +34,10 @@ const EXAMINER_ONLY_PATTERNS: Array<{ pattern: RegExp; intent: string }> = [
   { pattern: /\b(ist das|haben sie).*(lupus|rheuma bekannt|sle)\b/i, intent: "diagnosis.hidden" },
   { pattern: /\b(eular|acr|klassifikation|klassifikationspunkte|punkte haben sie)\b/i, intent: "classification" },
   { pattern: /\b(ana|anti[- ]?dsdna|anti[- ]?sm|komplement|c3|c4|bsg|crp|kreatinin|upcr|proteinurie)\b/i, intent: "laboratory" },
-  { pattern: /\b(a1|anatiter|ana titer|ana[- ]titer)\b/i, intent: "laboratory" },
+  { pattern: /\b(a1|anatiter|anna titer|ana titer|ana[- ]titer)\b/i, intent: "laboratory" },
   { pattern: /\b(laborwert|blutwert|titer|antikorper|antikörper)\b/i, intent: "laboratory" },
-  { pattern: /\b(differentialdiagnos|bewertungsbogen|therapie.*vorgesehen|behandlung.*empfehl)\b/i, intent: "examiner.meta" },
+  { pattern: /\b(differentialdiagnos|bewertungsbogen)\b/i, intent: "diagnosis.hidden" },
+  { pattern: /\b(therapie|behandlung|cortison|kortison|hydroxychloroquin|quensyl)\b/i, intent: "treatment" },
   { pattern: /\b(herzbeutelerguss|pleuraerguss|nierenbefund|untersucher.*festgestellt)\b/i, intent: "examiner.physical" },
   { pattern: /\b(schwangerschaftstest negativ|eular\/acr)\b/i, intent: "laboratory" },
 ];
@@ -143,6 +146,12 @@ export function isRaynaudColorQuestion(input: string): boolean {
 
 export function getExaminerOnlyIntent(input: string): string | null {
   const normalized = normalizePatientText(input);
+  const configured = loadPatientDialogueData().examinerOnlyBlocks.blocks;
+  for (const block of configured) {
+    if (matchesAnyAlias(input, block.aliases)) {
+      return block.intent;
+    }
+  }
   if (isDejargonizedLabResultQuestion(input)) {
     return "laboratory";
   }
@@ -174,36 +183,66 @@ const CHIEF_COMPLAINT_OPENER_PATTERNS = [
   /\bwas fuhrt sie\b/,
   /\bwas fuehrt sie\b/,
   /\bwas ist ihr problem\b/,
+  /\bwas problem\b/,
+  /\bwarum hier\b/,
   /\bweshalb sind sie\b/,
   /\bwas bringt sie\b/,
 ];
 
 export function isChiefComplaintOpenerQuestion(input: string): boolean {
   const normalized = normalizePatientText(input);
-  return CHIEF_COMPLAINT_OPENER_PATTERNS.some((pattern) => pattern.test(normalized));
+  if (CHIEF_COMPLAINT_OPENER_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return true;
+  }
+  const opener = loadPatientDialogueData().universalIntents.intents.find(
+    (intent) => intent.id === "chief_complaint.opener",
+  );
+  return Boolean(opener && matchesAnyAlias(input, opener.aliases));
 }
 
 export function inferBiographyIntent(input: string): string | null {
   const normalized = normalizePatientText(input);
+  const aliasIntent = [
+    ...loadPatientDialogueData().badGermanAliases.aliases,
+    ...loadPatientDialogueData().sttNoiseAliases.aliases,
+  ].find((alias) => {
+    const aliasInput = normalizePatientText(alias.input);
+    const aliasTokens = aliasInput.split(" ").filter(Boolean);
+    return (
+      normalized === aliasInput ||
+      (aliasTokens.length > 1 && containsNormalizedTerm(normalized, aliasInput))
+    );
+  })
+    ?.intent;
+
+  if (aliasIntent?.startsWith("biography.")) {
+    return aliasIntent;
+  }
 
   if (
     /\b(vorname|vornamen)\b/.test(normalized) &&
-    /\bbuchstab/.test(normalized)
+    (/\bbuchstab/.test(normalized) || /\bbuch\s+stab/.test(normalized))
   ) {
     return "biography.given_name_spelling";
   }
   if (
     /\b(nachname|nachnamen)\b/.test(normalized) &&
-    /\bbuchstab/.test(normalized)
+    (/\bbuchstab/.test(normalized) || /\bbuch\s+stab/.test(normalized))
   ) {
     return "biography.family_name_spelling";
   }
-  if (/\bbuchstab/.test(normalized) && /\b(name|namen)\b/.test(normalized)) {
+  if (
+    (/\bbuchstab/.test(normalized) || /\bbuch\s+stab/.test(normalized)) &&
+    /\b(name|namen)\b/.test(normalized)
+  ) {
+    return "biography.full_name_spelling";
+  }
+  if (/\bbuchstab/.test(normalized) || /\bbuch\s+stab/.test(normalized)) {
     return "biography.full_name_spelling";
   }
 
   if (
-    /\b(groesse|koerpergroesse|wie gross|wie grosse|wie gross sind|körpergröße)\b/.test(
+    /\b(groesse|grosse|korpergrosse|koerpergroesse|wie gross|wie grosse|wie gross sind|körpergröße)\b/.test(
       normalized,
     ) ||
     /\bwie gross\b.*\bsie\b/.test(normalized)
@@ -245,9 +284,10 @@ export function inferBiographyIntent(input: string): string | null {
   }
 
   if (
-    /\b(wie heissen|wie heißen|wie heisst|wie heißt|ihr name|name|nennen)\b/.test(
+    /\b(wie heissen|wie heisen|wie heißen|wie heisst|wie heißt|ihr name|ihr nahme|name|nahme|nennen)\b/.test(
       normalized,
     ) ||
+    /\bwhat is your name\b/.test(normalized) ||
     /\bnennen\b.*\b(sie|sich)\b/.test(normalized) ||
     /\bwer sind\b/.test(normalized) ||
     /^wie heis(s)?t\b/.test(normalized) ||
@@ -259,6 +299,96 @@ export function inferBiographyIntent(input: string): string | null {
     return "biography.occupation";
   }
   return null;
+}
+
+export function resolveUniversalDialogueIntent(input: string): {
+  intent: string;
+  responseDe: string;
+  responseClass: "neutral_default" | "clarify" | "case_positive";
+  matchedAliasId: string | null;
+} | null {
+  const normalized = normalizePatientText(input);
+  const tokens = normalizedTokens(input);
+  const data = loadPatientDialogueData();
+  const intents = [...data.universalIntents.intents].sort(
+    (a, b) => a.priority - b.priority,
+  );
+
+  for (const intent of intents) {
+    const matchedAlias = matchesAnyAlias(input, intent.aliases);
+    if (!matchedAlias) {
+      continue;
+    }
+    if (intent.id === "smalltalk.greeting" && looksLikeMedicalFragment(tokens)) {
+      continue;
+    }
+    if (intent.id === "chief_complaint.opener" && !isChiefComplaintOpenerQuestion(input)) {
+      continue;
+    }
+    if (intent.answer_de) {
+      return {
+        intent: intent.id,
+        responseDe: chooseSmallTalkResponse(intent.id, normalized, intent.answer_de),
+        responseClass:
+          intent.response_class === "clarify"
+            ? "clarify"
+            : intent.response_class === "case_positive"
+              ? "case_positive"
+              : "neutral_default",
+        matchedAliasId: `${intent.id}:${normalizePatientText(matchedAlias)}`,
+      };
+    }
+  }
+
+  return null;
+}
+
+function looksLikeMedicalFragment(tokens: string[]): boolean {
+  const contentTokens = tokens.filter(
+    (token) => !["uh", "ah", "aeh", "eh", "hm", "also", "hi", "hallo"].includes(token),
+  );
+  return contentTokens.some((token) =>
+    [
+      "hatten",
+      "haben",
+      "fuhlen",
+      "fuehlen",
+      "nehmen",
+      "wann",
+      "wie",
+      "was",
+      "warum",
+      "schmerz",
+      "temperatur",
+    ].includes(token),
+  );
+}
+
+function chooseSmallTalkResponse(
+  intent: string,
+  normalized: string,
+  fallback: string,
+): string {
+  if (intent === "smalltalk.greeting") {
+    if (containsNormalizedTerm(normalized, "guten morgen")) {
+      return "Guten Morgen.";
+    }
+    if (containsNormalizedTerm(normalized, "guten abend")) {
+      return "Guten Abend.";
+    }
+    if (containsNormalizedTerm(normalized, "hallo")) {
+      return "Hallo.";
+    }
+  }
+  if (intent === "smalltalk.closing") {
+    if (containsNormalizedTerm(normalized, "danke")) {
+      return "Gern. Auf Wiedersehen.";
+    }
+    if (containsNormalizedTerm(normalized, "tschuss")) {
+      return "Tschüss.";
+    }
+  }
+  return fallback;
 }
 
 export function inferFamilyIntent(input: string): "history" | "status" | "ambiguous" {

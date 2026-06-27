@@ -1,0 +1,32 @@
+version: 1.0.0
+aliases:
+  - id: stt-greeting-guten-tack
+    input: "Guten Tack"
+    intent: smalltalk.greeting
+    provenance: PRODUCT-SYNTHESIS
+  - id: stt-greeting-hi-aeh-hallo
+    input: "hi äh hallo"
+    intent: smalltalk.greeting
+    provenance: PRODUCT-SYNTHESIS
+  - id: stt-lab-anna-titer
+    input: "Anna Titer"
+    intent: laboratory
+    provenance: INTERNAL-PROMPT
+  - id: stt-lab-a1-titer
+    input: "A1-Titer"
+    intent: laboratory
+    provenance: INTERNAL-PROMPT
+  - id: stt-lab-anatiter
+    input: "Anatiter"
+    intent: laboratory
+    provenance: INTERNAL-PROMPT
+  - id: stt-truncated-koennen-sie-das
+    input: "Können Sie das bitte"
+    intent: unclear.repeat
+    response_class: clarify
+    provenance: INTERNAL-PROMPT
+  - id: stt-truncated-uh-hi-hatten-sie
+    input: "Uh hi Hatten Sie"
+    intent: unclear.repeat
+    response_class: clarify
+    provenance: INTERNAL-PROMPT

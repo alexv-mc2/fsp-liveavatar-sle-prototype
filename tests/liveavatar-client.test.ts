@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   fetchHeyGenBridgeStatus,
+  getLiveAvatarReadiness,
   isBridgeReady,
   parseSessionTokenResponse,
   requestHeyGenSessionToken,
@@ -8,6 +9,75 @@ import {
 import type { HeyGenBridgeStatus } from "@/lib/liveavatar/types";
 
 describe("liveavatar clientApi", () => {
+  describe("getLiveAvatarReadiness", () => {
+    it("keeps the start action disabled until the FSP session exists and the UI is idle", () => {
+      expect(
+        getLiveAvatarReadiness({
+          bridgeReady: true,
+          fspSessionId: null,
+          uiState: "idle",
+          busy: false,
+        }).canStart,
+      ).toBe(false);
+
+      expect(
+        getLiveAvatarReadiness({
+          bridgeReady: true,
+          fspSessionId: "11111111-1111-4111-8111-111111111111",
+          uiState: "starting",
+          busy: false,
+        }).canStart,
+      ).toBe(false);
+
+      expect(
+        getLiveAvatarReadiness({
+          bridgeReady: true,
+          fspSessionId: "11111111-1111-4111-8111-111111111111",
+          uiState: "idle",
+          busy: false,
+        }).canStart,
+      ).toBe(true);
+    });
+
+    it("does not label LiveAvatar ready before SDK connection and stream readiness", () => {
+      const idle = getLiveAvatarReadiness({
+        bridgeReady: true,
+        fspSessionId: "11111111-1111-4111-8111-111111111111",
+        providerSessionId: null,
+        uiState: "idle",
+        streamReady: false,
+        busy: false,
+      });
+      expect(idle.statusLabel).toBe("Sitzung bereit");
+      expect(idle.statusTone).not.toBe("live");
+      expect(idle.canUseVoice).toBe(false);
+
+      const connectedWithoutStream = getLiveAvatarReadiness({
+        bridgeReady: true,
+        fspSessionId: "11111111-1111-4111-8111-111111111111",
+        providerSessionId: "provider-123",
+        uiState: "connected",
+        streamReady: false,
+        busy: false,
+      });
+      expect(connectedWithoutStream.statusLabel).toBe("Verbunden, warte auf Video");
+      expect(connectedWithoutStream.statusTone).toBe("pending");
+      expect(connectedWithoutStream.canUseVoice).toBe(false);
+
+      const ready = getLiveAvatarReadiness({
+        bridgeReady: true,
+        fspSessionId: "11111111-1111-4111-8111-111111111111",
+        providerSessionId: "provider-123",
+        uiState: "connected",
+        streamReady: true,
+        busy: false,
+      });
+      expect(ready.statusLabel).toBe("Avatar bereit");
+      expect(ready.statusTone).toBe("live");
+      expect(ready.canUseVoice).toBe(true);
+    });
+  });
+
   describe("isBridgeReady", () => {
     it("returns true when session token bridge is configured", () => {
       const status: HeyGenBridgeStatus = {

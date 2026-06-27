@@ -5,37 +5,18 @@ import { useRef, useState } from "react";
 import { LiveAvatarDebugPanel } from "@/components/LiveAvatarDebugPanel";
 import { useFspLiveAvatarSession } from "@/hooks/useFspLiveAvatarSession";
 import { isLiveAvatarDebugEnabled } from "@/lib/liveavatar/diagnosticRun";
-import type { LiveAvatarUiState } from "@/lib/liveavatar/types";
+import { getLiveAvatarReadiness } from "@/lib/liveavatar/clientApi";
+import type { LiveAvatarReadiness } from "@/lib/liveavatar/clientApi";
 
-function statusLabel(state: LiveAvatarUiState): string {
-  switch (state) {
-    case "unconfigured":
-      return "Bridge nicht konfiguriert";
-    case "idle":
-      return "Bereit";
-    case "starting":
-      return "Verbinde …";
-    case "connected":
-      return "Verbunden";
-    case "stopping":
-      return "Beende …";
-    case "error":
-      return "Fehler";
-    default:
-      return state;
-  }
-}
-
-function statusClass(state: LiveAvatarUiState): string {
-  switch (state) {
-    case "connected":
+function statusClass(tone: LiveAvatarReadiness["statusTone"]): string {
+  switch (tone) {
+    case "live":
       return "status-pill status-live";
-    case "starting":
-    case "stopping":
+    case "pending":
       return "status-pill status-pending";
     case "error":
       return "status-pill status-error";
-    case "unconfigured":
+    case "mock":
       return "status-pill status-mock";
     default:
       return "status-pill";
@@ -79,18 +60,18 @@ export function LiveAvatarPracticePanel() {
 
   const displayError = errorMessage ?? localError;
   const isConversational = interactivityType === "CONVERSATIONAL";
-  const canConnect =
-    bridgeReady === true &&
-    Boolean(fspSessionId) &&
-    uiState !== "connected" &&
-    uiState !== "starting" &&
-    uiState !== "stopping";
-  const canStop =
-    uiState === "connected" || uiState === "starting" || uiState === "error";
+  const readiness = getLiveAvatarReadiness({
+    bridgeReady,
+    fspSessionId,
+    providerSessionId,
+    uiState,
+    streamReady,
+    busy,
+  });
   const canPushToTalk =
-    !isConversational && uiState === "connected" && streamReady;
+    !isConversational && readiness.canUseVoice;
   const canListenControl =
-    isConversational && uiState === "connected" && streamReady;
+    isConversational && readiness.canUseVoice;
 
   async function runAction(action: () => Promise<void>) {
     setLocalError(null);
@@ -177,7 +158,9 @@ export function LiveAvatarPracticePanel() {
         </div>
         <div>
           <span>Status</span>
-          <span className={statusClass(uiState)}>{statusLabel(uiState)}</span>
+          <span className={statusClass(readiness.statusTone)}>
+            {readiness.statusLabel}
+          </span>
         </div>
         <div>
           <span>Mikrofon</span>
@@ -187,7 +170,9 @@ export function LiveAvatarPracticePanel() {
 
       <div className={`avatar-shell liveavatar-shell ${streamReady ? "avatar-stream-ready" : ""}`}>
         <div className="avatar-status-row">
-          <span className={statusClass(uiState)}>{statusLabel(uiState)}</span>
+          <span className={statusClass(readiness.statusTone)}>
+            {readiness.statusLabel}
+          </span>
           <span className="muted-copy">
             {streamReady ? "Videostream aktiv" : "Warte auf Avatar-Video …"}
           </span>
@@ -251,7 +236,7 @@ export function LiveAvatarPracticePanel() {
         <button
           type="button"
           className="button button-primary"
-          disabled={busy || !canConnect}
+          disabled={!readiness.canStart}
           onClick={() => void runAction(startLiveAvatar)}
         >
           LiveAvatar verbinden
@@ -296,7 +281,7 @@ export function LiveAvatarPracticePanel() {
         <button
           type="button"
           className="button button-secondary"
-          disabled={busy || !canStop}
+          disabled={busy || !readiness.canStop}
           onClick={() => void runAction(stopSession)}
         >
           Session beenden

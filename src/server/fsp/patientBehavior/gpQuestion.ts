@@ -33,3 +33,8 @@ export function isPartialGpSttFragment(input: string): boolean {
   const normalized = normalizePatientText(input).trim();
   return normalized === "haus" || normalized === "mein haus";
 }
+
+export function isDermatologistCollisionQuestion(input: string): boolean {
+  const normalized = normalizePatientText(input).trim();
+  return /\b(hautarzt|haut arzt|haut arztin)\b/.test(normalized);
+}

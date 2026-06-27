@@ -242,6 +242,24 @@ facts:
     checklist_item: red_flags
     source_status: "[PROTOTYPE]"
 
+  - id: asthma_negative
+    category: respiratory
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["asthma", "asthma bronchiale", "spray"]
+    answer_de: "Nein, Asthma habe ich nicht."
+    checklist_item: red_flags
+    source_status: "[INFERENCE][DIALOGUE-NEGATIVE]"
+
+  - id: palpitations_negative
+    category: cardiovascular
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["herzrasen", "herz schnell", "palpitationen", "stolpern"]
+    answer_de: "Nein, Herzrasen habe ich nicht bemerkt."
+    checklist_item: red_flags
+    source_status: "[INFERENCE][DIALOGUE-NEGATIVE]"
+
   - id: red_flag_renal
     category: organ_involvement
     visibility: hidden
@@ -332,6 +350,15 @@ facts:
     trigger_keywords: ["ausland", "reise", "tropen", "urlaub", "geimpft", "impfung"]
     answer_de: "Nein, ich war in letzter Zeit nicht im Ausland."
     source_status: "[PROTOTYPE]"
+
+  - id: tick_bite_negative
+    category: exposure
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["zecke", "zeckenbiss", "zecken"]
+    answer_de: "Nein, einen Zeckenbiss hatte ich nicht."
+    checklist_item: red_flags
+    source_status: "[INFERENCE][DIALOGUE-NEGATIVE]"
 
   - id: miscarriage_thrombosis_negative
     category: gynecology

@@ -3,7 +3,11 @@ import {
   buildBiographyResponse,
   inferRepeatBiographyIntent,
 } from "./biographyResponses";
-import { isGpQuestion, isPartialGpSttFragment } from "./gpQuestion";
+import {
+  isDermatologistCollisionQuestion,
+  isGpQuestion,
+  isPartialGpSttFragment,
+} from "./gpQuestion";
 import {
   detectQuestionQualities,
   getExaminerOnlyIntent,
@@ -16,6 +20,7 @@ import {
   isJargonQuestion,
   isLeadingQuestion,
   isRaynaudColorQuestion,
+  resolveUniversalDialogueIntent,
 } from "./classifyQuestion";
 import { buildFocusedFactResponse } from "./focusedFactResponse";
 import {
@@ -26,6 +31,7 @@ import {
 } from "./imperfectSttRecovery";
 import { isRepeatRequest, WHAT_TO_REPEAT_CLARIFY_DE } from "./repeatRequest";
 import { matchScenarioFacts } from "./factMatcher";
+import { loadPatientDialogueData } from "./dialogueData";
 import { normalizePatientText } from "./normalize";
 import type { PatientBehaviorResolution, ResponseClass } from "./types";
 
@@ -93,6 +99,24 @@ function resolveExaminerBlock(
   scenario: SleScenario,
   intent: string | null,
 ): PatientBehaviorResolution {
+  const configuredBlock = loadPatientDialogueData().examinerOnlyBlocks.blocks.find(
+    (block) => block.intent === intent,
+  );
+  if (configuredBlock) {
+    return {
+      responseDe: configuredBlock.response_de,
+      responseClass: "examiner_only_block",
+      revealedFactIds: [],
+      blockedFactIds: [],
+      matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: configuredBlock.id,
+      fallbackReason: null,
+      intent,
+      questionQuality: ["examiner_only"],
+    };
+  }
+
   const asksForClassification = intent === "classification";
   const asksForLab = intent === "laboratory" || intent === "examiner.physical";
   const responseDe = asksForClassification
@@ -110,6 +134,9 @@ function resolveExaminerBlock(
     revealedFactIds: [],
     blockedFactIds: [],
     matchedKeywords: [],
+    matchedFactId: null,
+    matchedAliasId: null,
+    fallbackReason: null,
     intent,
     questionQuality: ["examiner_only"],
   };
@@ -139,6 +166,9 @@ export function resolvePatientResponse(
         revealedFactIds: [],
         blockedFactIds: [],
         matchedKeywords: [],
+        matchedFactId: null,
+        matchedAliasId: "message_history.last_assistant",
+        fallbackReason: null,
         intent: "patient.repeat",
         questionQuality,
       };
@@ -152,6 +182,9 @@ export function resolvePatientResponse(
         revealedFactIds: [],
         blockedFactIds: [],
         matchedKeywords: [],
+        matchedFactId: null,
+        matchedAliasId: repeatTarget,
+        fallbackReason: null,
         intent: "patient.repeat",
         questionQuality,
       };
@@ -162,10 +195,29 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: null,
+      fallbackReason: "no_repeatable_answer",
       intent: "patient.repeat.clarify",
       questionQuality,
     };
   };
+
+  const universal = resolveUniversalDialogueIntent(input);
+  if (universal && universal.intent !== "dialogue.repeat_or_clarify") {
+    return {
+      responseDe: universal.responseDe,
+      responseClass: universal.responseClass,
+      revealedFactIds: [],
+      blockedFactIds: [],
+      matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: universal.matchedAliasId,
+      fallbackReason: null,
+      intent: universal.intent,
+      questionQuality,
+    };
+  }
 
   if (isImperfectLabSttQuestion(input)) {
     const factMatches = matchScenarioFacts(scenario.facts, normalizedInput);
@@ -203,6 +255,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: null,
+      fallbackReason: "medical_jargon_without_lay_context",
       intent: "jargon",
       questionQuality,
     };
@@ -216,6 +271,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: vagueKey,
+      fallbackReason: null,
       intent: `ambiguous.${vagueKey}`,
       questionQuality,
     };
@@ -229,6 +287,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: null,
+      fallbackReason: null,
       intent: "ambiguous.substances",
       questionQuality,
     };
@@ -246,7 +307,25 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: "gp.partial",
+      fallbackReason: null,
       intent: "clarify.gp",
+      questionQuality,
+    };
+  }
+
+  if (isDermatologistCollisionQuestion(input)) {
+    return {
+      responseDe: "Meinen Sie meinen Hausarzt oder einen Hautarzt?",
+      responseClass: "clarify",
+      revealedFactIds: [],
+      blockedFactIds: [],
+      matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: "clarify.hautarzt_collision",
+      fallbackReason: null,
+      intent: "clarify.hautarzt_collision",
       questionQuality,
     };
   }
@@ -259,6 +338,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: "biography.gp",
+      fallbackReason: null,
       intent: "biography.gp",
       questionQuality,
     };
@@ -273,6 +355,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: bioIntent,
+      fallbackReason: null,
       intent: bioIntent,
       questionQuality,
     };
@@ -285,6 +370,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: "chief_complaint.opener",
+      fallbackReason: null,
       intent: "chief_complaint.opener",
       questionQuality,
     };
@@ -298,6 +386,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: "broad.anamnesis",
+      fallbackReason: null,
       intent: "broad.anamnesis",
       questionQuality,
     };
@@ -311,6 +402,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: "ambiguous.family",
+      fallbackReason: null,
       intent: "ambiguous.family",
       questionQuality,
     };
@@ -358,18 +452,7 @@ export function resolvePatientResponse(
     if (isImperfectLabSttQuestion(input)) {
       return resolveExaminerBlock(scenario, "laboratory");
     }
-    if (isUnclearTruncatedQuestion(input)) {
-      return {
-        responseDe: REPEAT_QUESTION_CLARIFY_DE,
-        responseClass: "clarify",
-        revealedFactIds: [],
-        blockedFactIds: [],
-        matchedKeywords: [],
-        intent: "unclear.repeat",
-        questionQuality,
-      };
-    }
-    if (/\b(stress|sorgen|erwartung|befurcht|angst)\b/.test(normalizedInput)) {
+    if (/\b(stress|sorgen|erwartung|befurcht|befuercht|angst)\b/.test(normalizedInput)) {
       return {
         responseDe:
           "Ich mache mir Sorgen, dass etwas Ernstes dahintersteckt, und möchte wissen, woher das kommt.",
@@ -377,7 +460,24 @@ export function resolvePatientResponse(
         revealedFactIds: [],
         blockedFactIds: [],
         matchedKeywords: [],
+        matchedFactId: null,
+        matchedAliasId: "concerns",
+        fallbackReason: null,
         intent: "concerns",
+        questionQuality,
+      };
+    }
+    if (isUnclearTruncatedQuestion(input)) {
+      return {
+        responseDe: REPEAT_QUESTION_CLARIFY_DE,
+        responseClass: "clarify",
+        revealedFactIds: [],
+        blockedFactIds: [],
+        matchedKeywords: [],
+        matchedFactId: null,
+        matchedAliasId: null,
+        fallbackReason: "unclear_truncated_question",
+        intent: "unclear.repeat",
         questionQuality,
       };
     }
@@ -388,6 +488,9 @@ export function resolvePatientResponse(
         revealedFactIds: [],
         blockedFactIds: [],
         matchedKeywords: [],
+        matchedFactId: null,
+        matchedAliasId: null,
+        fallbackReason: "likely_misunderstood_question",
         intent: "unclear.repeat",
         questionQuality,
       };
@@ -398,6 +501,9 @@ export function resolvePatientResponse(
       revealedFactIds: [],
       blockedFactIds: [],
       matchedKeywords: [],
+      matchedFactId: null,
+      matchedAliasId: null,
+      fallbackReason: "no_dialogue_match",
       intent: null,
       questionQuality,
     };
@@ -442,20 +548,36 @@ export function resolvePatientResponse(
 
   const newlyRevealed = applyFactReveal(session, surfaced);
 
-  const hasNegative = surfaced.some((m) =>
-    /\b(nein|kein|keine|nicht)\b/i.test(m.fact.answer_de),
-  );
+  const responseDe = buildFocusedFactResponse(surfaced[0].fact, input);
+  const hasNegative = isNegativePatientAnswer(responseDe);
   const responseClass: ResponseClass = hasNegative
     ? "case_negative"
     : "case_positive";
 
   return {
-    responseDe: buildFocusedFactResponse(surfaced[0].fact, input),
+    responseDe,
     responseClass,
     revealedFactIds: newlyRevealed,
     blockedFactIds: blocked.map((entry) => entry.fact.id),
     matchedKeywords: [...surfaced, ...blocked].map((entry) => entry.keyword),
+    matchedFactId: surfaced[0]?.fact.id ?? null,
+    matchedAliasId: surfaced[0]?.keyword ?? null,
+    fallbackReason: null,
     intent: surfaced[0]?.fact.category ?? null,
     questionQuality,
   };
+}
+
+function isNegativePatientAnswer(responseDe: string): boolean {
+  const normalized = responseDe.trim().toLocaleLowerCase("de-DE");
+  if (/^(nein|kein|keine|keinen|keinem|keiner)\b/.test(normalized)) {
+    return true;
+  }
+  if (/^(ich rauche nicht|schwanger bin ich nicht)\b/.test(normalized)) {
+    return true;
+  }
+  if (!normalized.startsWith("ja") && /\b(keine|keinen|nicht)\b/.test(normalized)) {
+    return true;
+  }
+  return false;
 }

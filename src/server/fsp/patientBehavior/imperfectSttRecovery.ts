@@ -12,6 +12,7 @@ export const REPEAT_QUESTION_CLARIFY_DE =
 const IMPERFECT_ANA_TITER_PATTERNS = [
   /\ba1[- ]?titer\b/,
   /\banatiter\b/,
+  /\banna\s+titer\b/,
   /\bana\s+titer\b/,
   /\bana[- ]titer\b/,
 ];
@@ -25,6 +26,11 @@ const TRUNCATED_QUESTION_PATTERNS = [
   /^wie ist$/,
   /^was ist$/,
   /^haben sie$/,
+  /^hatten sie$/,
+  /^konnen sie das bitte$/,
+  /^koennen sie das bitte$/,
+  /^uh hi hatten sie$/,
+  /^hi hatten sie$/,
 ];
 
 /** Corrupted or fragmentary lab-value STT (imperfect learner German). */
@@ -77,6 +83,14 @@ export function isUnclearTruncatedQuestion(input: string): boolean {
     if (/\b(alt|name|geboren|gewicht|gross|groesse|hausarzt|haus arzt)\b/.test(normalized)) {
       return false;
     }
+    return true;
+  }
+  if (
+    normalized.length <= 30 &&
+    /^(uh hi |hi |also |ah |aeh )?(hatten sie|haben sie|konnen sie das bitte|koennen sie das bitte)$/.test(
+      normalized,
+    )
+  ) {
     return true;
   }
   return false;
