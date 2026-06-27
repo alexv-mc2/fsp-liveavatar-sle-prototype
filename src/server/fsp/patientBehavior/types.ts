@@ -27,6 +27,8 @@ export interface PatientBehaviorResolution {
   matchedKeywords: string[];
   matchedFactId?: string | null;
   matchedAliasId?: string | null;
+  intentScore?: number | null;
+  matchStrategy?: string | null;
   fallbackReason?: string | null;
   intent: string | null;
   questionQuality: QuestionQuality[];

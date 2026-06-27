@@ -33,6 +33,10 @@ import { isRepeatRequest, WHAT_TO_REPEAT_CLARIFY_DE } from "./repeatRequest";
 import { matchScenarioFacts } from "./factMatcher";
 import { loadPatientDialogueData } from "./dialogueData";
 import { normalizePatientText } from "./normalize";
+import {
+  scoreSemanticIntent,
+  type SemanticIntentMatch,
+} from "./semanticIntent";
 import type { PatientBehaviorResolution, ResponseClass } from "./types";
 
 const CLARIFY_TEMPLATES: Record<string, string> = {
@@ -95,6 +99,18 @@ function applyFactReveal(
   return newlyRevealed;
 }
 
+function applySemanticMetadata(
+  resolution: PatientBehaviorResolution,
+  match: SemanticIntentMatch,
+): PatientBehaviorResolution {
+  return {
+    ...resolution,
+    intentScore: match.score,
+    matchStrategy: match.matchStrategy,
+    fallbackReason: match.fallbackReason ?? resolution.fallbackReason ?? null,
+  };
+}
+
 function resolveExaminerBlock(
   scenario: SleScenario,
   intent: string | null,
@@ -154,29 +170,34 @@ export function resolvePatientResponse(
   const questionQuality = detectQuestionQualities(input);
   const priorAnswer =
     session.lastPatientResponseDe ?? options.conversationLastAssistantDe ?? null;
+  const semanticMatch = scoreSemanticIntent(input);
 
-  const resolveRepeat = (): PatientBehaviorResolution | null => {
-    if (!isRepeatRequest(input)) {
+  const resolveRepeat = (
+    match: SemanticIntentMatch | null = null,
+  ): PatientBehaviorResolution | null => {
+    const semanticRepeat = match?.kind === "repeat";
+    if (!isRepeatRequest(input) && !semanticRepeat) {
       return null;
     }
     if (priorAnswer) {
-      return {
+      const resolution: PatientBehaviorResolution = {
         responseDe: priorAnswer,
         responseClass: "neutral_default",
         revealedFactIds: [],
         blockedFactIds: [],
         matchedKeywords: [],
         matchedFactId: null,
-        matchedAliasId: "message_history.last_assistant",
+        matchedAliasId: match?.matchedAliasId ?? "message_history.last_assistant",
         fallbackReason: null,
         intent: "patient.repeat",
         questionQuality,
       };
+      return match ? applySemanticMetadata(resolution, match) : resolution;
     }
     const repeatTarget = inferRepeatBiographyIntent(input);
     if (repeatTarget) {
       const bio = buildBiographyResponse(repeatTarget, scenario, input);
-      return {
+      const resolution: PatientBehaviorResolution = {
         responseDe: bio.responseDe,
         responseClass: bio.responseClass,
         revealedFactIds: [],
@@ -188,8 +209,26 @@ export function resolvePatientResponse(
         intent: "patient.repeat",
         questionQuality,
       };
+      return match ? applySemanticMetadata(resolution, match) : resolution;
     }
-    return {
+    if (match?.matchedAliasId === "repeat.clipped_can_you_please") {
+      return applySemanticMetadata(
+        {
+          responseDe: REPEAT_QUESTION_CLARIFY_DE,
+          responseClass: "clarify",
+          revealedFactIds: [],
+          blockedFactIds: [],
+          matchedKeywords: [],
+          matchedFactId: null,
+          matchedAliasId: match.matchedAliasId,
+          fallbackReason: "semantic_repeat_without_history",
+          intent: "unclear.repeat",
+          questionQuality,
+        },
+        match,
+      );
+    }
+    const resolution: PatientBehaviorResolution = {
       responseDe: WHAT_TO_REPEAT_CLARIFY_DE,
       responseClass: "clarify",
       revealedFactIds: [],
@@ -201,7 +240,153 @@ export function resolvePatientResponse(
       intent: "patient.repeat.clarify",
       questionQuality,
     };
+    return match ? applySemanticMetadata(resolution, match) : resolution;
   };
+
+  const semanticRepeatResolution = resolveRepeat(
+    semanticMatch?.kind === "repeat" ? semanticMatch : null,
+  );
+  if (semanticRepeatResolution) {
+    return semanticRepeatResolution;
+  }
+
+  if (semanticMatch && semanticMatch.kind !== "repeat") {
+    if (semanticMatch.kind === "greeting") {
+      const greetingResponse = /\bguten morgen\b/.test(normalizedInput)
+        ? "Guten Morgen."
+        : /\bguten abend\b/.test(normalizedInput)
+          ? "Guten Abend."
+          : /\b(hi|hallo)\b/.test(normalizedInput)
+            ? "Hallo."
+            : "Guten Tag.";
+      return applySemanticMetadata(
+        {
+          responseDe: greetingResponse,
+          responseClass: "neutral_default",
+          revealedFactIds: [],
+          blockedFactIds: [],
+          matchedKeywords: [],
+          matchedFactId: null,
+          matchedAliasId: semanticMatch.matchedAliasId,
+          fallbackReason: null,
+          intent: semanticMatch.intent,
+          questionQuality,
+        },
+        semanticMatch,
+      );
+    }
+
+    if (semanticMatch.kind === "biography" && semanticMatch.biographyIntent) {
+      const bio = buildBiographyResponse(semanticMatch.biographyIntent, scenario, input);
+      return applySemanticMetadata(
+        {
+          responseDe: bio.responseDe,
+          responseClass: bio.responseClass,
+          revealedFactIds: [],
+          blockedFactIds: [],
+          matchedKeywords: [],
+          matchedFactId: null,
+          matchedAliasId: semanticMatch.matchedAliasId,
+          fallbackReason: null,
+          intent: semanticMatch.intent,
+          questionQuality,
+        },
+        semanticMatch,
+      );
+    }
+
+    if (semanticMatch.kind === "lab_block") {
+      const factMatches = matchScenarioFacts(scenario.facts, normalizedInput);
+      const blocked = factMatches.filter(
+        (match) =>
+          match.fact.visibility === "examiner_only" ||
+          !match.fact.allowed_phases.includes(session.phase),
+      );
+      const resolution = resolveExaminerBlock(scenario, "laboratory");
+      resolution.responseDe = "Die genauen Blutwerte kenne ich nicht.";
+      resolution.blockedFactIds = blocked.map((entry) => entry.fact.id);
+      resolution.matchedKeywords = blocked.map((entry) => entry.keyword);
+      resolution.matchedAliasId = semanticMatch.matchedAliasId;
+      return applySemanticMetadata(resolution, semanticMatch);
+    }
+
+    if (semanticMatch.kind === "diagnosis_block") {
+      const resolution = resolveExaminerBlock(scenario, "diagnosis.hidden");
+      if (/\b(slr|sla)\b/.test(normalizedInput)) {
+        resolution.responseDe = "Ich weiß nicht, was die Abkürzung bedeutet.";
+      } else {
+        resolution.responseDe =
+          "Das wurde mir bisher nicht gesagt. Ich weiß nur, dass die Beschwerden abgeklärt werden sollen.";
+      }
+      resolution.matchedAliasId = semanticMatch.matchedAliasId;
+      return applySemanticMetadata(resolution, semanticMatch);
+    }
+
+    if (semanticMatch.kind === "chief_complaint_opener") {
+      return applySemanticMetadata(
+        {
+          responseDe: scenario.opening.statement_de,
+          responseClass: "case_positive",
+          revealedFactIds: [],
+          blockedFactIds: [],
+          matchedKeywords: [],
+          matchedFactId: null,
+          matchedAliasId: semanticMatch.matchedAliasId,
+          fallbackReason: null,
+          intent: semanticMatch.intent,
+          questionQuality,
+        },
+        semanticMatch,
+      );
+    }
+
+    if (semanticMatch.kind === "fact" && semanticMatch.matchedFactId) {
+      const fact = scenario.facts.find((entry) => entry.id === semanticMatch.matchedFactId);
+      if (fact) {
+        const newlyRevealed = applyFactReveal(session, [
+          { fact, keyword: semanticMatch.matchedAliasId ?? semanticMatch.matchedFactId },
+        ]);
+        const responseDe = buildFocusedFactResponse(fact, input);
+        const responseClass: ResponseClass = isNegativePatientAnswer(responseDe)
+          ? "case_negative"
+          : "case_positive";
+        return applySemanticMetadata(
+          {
+            responseDe,
+            responseClass,
+            revealedFactIds: newlyRevealed,
+            blockedFactIds: [],
+            matchedKeywords: [semanticMatch.matchedAliasId ?? semanticMatch.matchedFactId],
+            matchedFactId: fact.id,
+            matchedAliasId: semanticMatch.matchedAliasId,
+            fallbackReason: null,
+            intent: fact.category,
+            questionQuality,
+          },
+          semanticMatch,
+        );
+      }
+    }
+
+    if (semanticMatch.kind === "medium_anamnesis") {
+      return applySemanticMetadata(
+        {
+          responseDe:
+            "Meinen Sie meine Hauptbeschwerden, seit wann sie bestehen, oder ein bestimmtes Symptom?",
+          responseClass: "clarify",
+          revealedFactIds: [],
+          blockedFactIds: [],
+          matchedKeywords: [],
+          matchedFactId: null,
+          matchedAliasId: semanticMatch.matchedAliasId,
+          fallbackReason: semanticMatch.fallbackReason ?? "semantic_medium_confidence",
+          intent: semanticMatch.intent,
+          questionQuality,
+        },
+        semanticMatch,
+      );
+    }
+  }
 
   const universal = resolveUniversalDialogueIntent(input);
   if (universal && universal.intent !== "dialogue.repeat_or_clarify") {

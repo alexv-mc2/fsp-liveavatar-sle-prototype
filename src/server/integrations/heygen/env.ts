@@ -38,6 +38,8 @@ export const LIVEAVATAR_DEFAULTS = {
   SANDBOX: true,
 } as const;
 
+export const LIVEAVATAR_PREVIEW_MANUAL_REVIEW_MIN_SECONDS = 1080;
+
 export type LiveAvatarInteractivityType = "PUSH_TO_TALK" | "CONVERSATIONAL";
 
 export type LiveAvatarRuntimeConfig = {
@@ -94,6 +96,9 @@ export type HeyGenEnvSnapshot = {
     boolean
   >;
   runtimeDefaults: typeof LIVEAVATAR_DEFAULTS;
+  envPolicy: {
+    maxSessionSecondsReason: "preview_manual_review_minimum" | null;
+  };
   /** Parsed runtime values when session-token env is complete; null when not configured. */
   runtimeResolved: {
     INTERACTIVITY_TYPE: LiveAvatarInteractivityType;
@@ -156,6 +161,26 @@ function parsePositiveInteger(value: string | undefined, fallback: number): numb
     return fallback;
   }
   return parsed;
+}
+
+function resolveMaxSessionSeconds(): {
+  value: number;
+  reason: HeyGenEnvSnapshot["envPolicy"]["maxSessionSecondsReason"];
+} {
+  const configured = parsePositiveInteger(
+    readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS),
+    LIVEAVATAR_DEFAULTS.MAX_SESSION_SECONDS,
+  );
+  if (
+    readTrimmed("VERCEL_ENV") === "preview" &&
+    configured < LIVEAVATAR_PREVIEW_MANUAL_REVIEW_MIN_SECONDS
+  ) {
+    return {
+      value: LIVEAVATAR_PREVIEW_MANUAL_REVIEW_MIN_SECONDS,
+      reason: "preview_manual_review_minimum",
+    };
+  }
+  return { value: configured, reason: null };
 }
 
 function parseInteractivityType(
@@ -224,6 +249,7 @@ export function readHeyGenEnvSnapshot(): HeyGenEnvSnapshot {
     avatarId,
     llmConfigurationId,
   );
+  const maxSessionSeconds = resolveMaxSessionSeconds();
 
   const bridgeMissing: string[] = [...sessionTokenMissing];
   if (!publicBaseUrl) {
@@ -252,6 +278,9 @@ export function readHeyGenEnvSnapshot(): HeyGenEnvSnapshot {
     },
     expoWallAliasesPresent: readExpoWallAliasPresence(),
     runtimeDefaults: LIVEAVATAR_DEFAULTS,
+    envPolicy: {
+      maxSessionSecondsReason: maxSessionSeconds.reason,
+    },
     runtimeResolved: sessionTokenMissing.length
       ? null
       : {
@@ -259,7 +288,7 @@ export function readHeyGenEnvSnapshot(): HeyGenEnvSnapshot {
             readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.INTERACTIVITY_TYPE),
           ),
           MAX_SESSION_SECONDS: parsePositiveInteger(
-            readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS),
+            String(maxSessionSeconds.value),
             LIVEAVATAR_DEFAULTS.MAX_SESSION_SECONDS,
           ),
           SANDBOX: parseBoolean(
@@ -303,6 +332,7 @@ export function readLiveAvatarRuntimeConfig(): LiveAvatarRuntimeConfig | null {
   const apiBaseUrl =
     readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.BASE_URL) ??
     LIVEAVATAR_API_DEFAULT_BASE_URL;
+  const maxSessionSeconds = resolveMaxSessionSeconds();
 
   return {
     apiKey: apiKey.value,
@@ -315,10 +345,7 @@ export function readLiveAvatarRuntimeConfig(): LiveAvatarRuntimeConfig | null {
     interactivityType: parseInteractivityType(
       readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.INTERACTIVITY_TYPE),
     ),
-    maxSessionSeconds: parsePositiveInteger(
-      readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS),
-      LIVEAVATAR_DEFAULTS.MAX_SESSION_SECONDS,
-    ),
+    maxSessionSeconds: maxSessionSeconds.value,
     sandbox: parseBoolean(
       readTrimmed(EXPO_WALL_LIVEAVATAR_ENV.SANDBOX),
       LIVEAVATAR_DEFAULTS.SANDBOX,

@@ -39,6 +39,7 @@ function clearLiveAvatarEnv() {
     HEYGEN_ENV.PUBLIC_BASE_URL,
     ...Object.values(EXPO_WALL_LIVEAVATAR_ENV),
     "VERCEL_URL",
+    "VERCEL_ENV",
   ];
   for (const name of names) {
     delete process.env[name];
@@ -295,5 +296,20 @@ describe("LiveAvatar session token route", () => {
       MAX_SESSION_SECONDS: 300,
       LANGUAGE: LIVEAVATAR_DEFAULTS.LANGUAGE,
     });
+  });
+
+  it("raises short Preview manual-review sessions without changing Production env semantics", () => {
+    setConfiguredLiveAvatarEnv(false, false);
+    process.env.VERCEL_ENV = "preview";
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS] = "300";
+
+    expect(readLiveAvatarRuntimeConfig()?.maxSessionSeconds).toBe(1080);
+    expect(readHeyGenEnvSnapshot().envPolicy?.maxSessionSecondsReason).toBe(
+      "preview_manual_review_minimum",
+    );
+
+    process.env.VERCEL_ENV = "production";
+    expect(readLiveAvatarRuntimeConfig()?.maxSessionSeconds).toBe(300);
+    expect(readHeyGenEnvSnapshot().envPolicy?.maxSessionSecondsReason).toBeNull();
   });
 });

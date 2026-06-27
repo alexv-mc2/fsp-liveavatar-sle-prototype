@@ -87,6 +87,8 @@ export interface OpenAIChatCompletionResponse {
       question_quality: string[];
       matched_fact_id?: string | null;
       matched_alias_id?: string | null;
+      intent_score?: number | null;
+      match_strategy?: string | null;
       fallback_reason?: string | null;
     };
   };
@@ -334,6 +336,8 @@ export function processChatCompletion(
             question_quality: patientBehavior.questionQuality,
             matched_fact_id: patientBehavior.matchedFactId ?? null,
             matched_alias_id: patientBehavior.matchedAliasId ?? null,
+            intent_score: patientBehavior.intentScore ?? null,
+            match_strategy: patientBehavior.matchStrategy ?? null,
             fallback_reason: patientBehavior.fallbackReason ?? null,
           }
         : undefined,
@@ -426,6 +430,8 @@ export async function handleChatCompletionPost(request: Request) {
       patient_behavior_intent: result.x_fsp.patient_behavior?.intent ?? null,
       matched_fact_id: result.x_fsp.patient_behavior?.matched_fact_id ?? null,
       matched_alias_id: result.x_fsp.patient_behavior?.matched_alias_id ?? null,
+      intent_score: result.x_fsp.patient_behavior?.intent_score ?? null,
+      match_strategy: result.x_fsp.patient_behavior?.match_strategy ?? null,
       fallback_reason: result.x_fsp.patient_behavior?.fallback_reason ?? null,
       ...routeProof,
     };

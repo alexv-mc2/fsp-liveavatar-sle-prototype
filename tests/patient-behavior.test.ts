@@ -266,6 +266,178 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
     });
   });
 
+  describe("LiveAvatar semantic intent normalization (diagnostic 4589df10)", () => {
+    it.each([
+      "Warum sind Sie gekommen?",
+      "Warum sind Sie zu uns gekommen?",
+      "Warum sind Sie heute zu uns gekommen?",
+      "Weshalb kommen Sie?",
+      "Was führt Sie zu uns?",
+      "Was Problem?",
+      "Welche Beschwerden haben Sie?",
+      "Was ist los?",
+      "Was haben Sie?",
+      "Warum denn bitte heute zu uns gekommen?",
+    ] as const)("maps opener variant %s to only the main complaint", (question) => {
+      const response = ask(question);
+      const content = response.choices[0].message.content;
+
+      expect(content).toMatch(/Schmerzen.*Hand|Hand.*Schmerzen/i);
+      expect(content).not.toMatch(/müde|erschöpft|Temperatur|Sonne|Gesicht|Kilo|Blut/i);
+      expect(response.x_fsp.patient_behavior?.intent).toBe("chief_complaint.opener");
+      expect(response.x_fsp.patient_behavior?.match_strategy).toMatch(/semantic/);
+      expect(response.x_fsp.patient_behavior?.intent_score).toBeGreaterThanOrEqual(0.8);
+    });
+
+    it.each([
+      "Fühlen Sie sich müde?",
+      "Sind Sie müde?",
+      "Haben Sie Müdigkeit?",
+      "Müdigkeit?",
+      "Fühlen Sie sich schwach?",
+      "Fühlen Sie sich erschöpft?",
+      "Sind Sie denn heute sehr erschopft bitte?",
+    ] as const)("maps fatigue semantic variant %s", (question) => {
+      const response = ask(question);
+
+      expect(response.choices[0].message.content).toBe(
+        "Ja, ich bin seit etwa acht Wochen ungewöhnlich müde.",
+      );
+      expect(response.x_fsp.patient_behavior?.matched_fact_id).toBe("chief_fatigue");
+      expect(response.x_fsp.patient_behavior?.match_strategy).toMatch(/semantic/);
+    });
+
+    it.each([
+      "Hatten Sie Temperatur?",
+      "Hatten Sie erhöhte Temperatur?",
+      "Fieber?",
+      "Temperatur?",
+      "War die Temperatur erhöht?",
+      "Temperatur war erhöht bei Ihnen?",
+    ] as const)("maps fever semantic variant %s", (question) => {
+      const response = ask(question);
+
+      expect(response.choices[0].message.content).toBe(
+        "Ja, manchmal bis ungefähr 38,2 Grad.",
+      );
+      expect(response.x_fsp.patient_behavior?.matched_fact_id).toBe("intermittent_fever");
+      expect(response.x_fsp.patient_behavior?.match_strategy).toMatch(/semantic/);
+    });
+
+    it.each([
+      "Können Sie das bitte",
+      "Können Sie das bitte wiederholen?",
+      "Können Sie noch mal wiederholen?",
+      "Noch einmal bitte",
+      "Wiederholen",
+      "Langsamer bitte",
+      "Bitte langsamer",
+    ] as const)("repeats the previous patient answer from message history for %s", (question) => {
+      const response = processChatCompletion(
+        {
+          messages: [
+            { role: "user", content: "Wie heißen Sie?" },
+            { role: "assistant", content: "Ich heiße Leonie Hartmann." },
+            { role: "user", content: question },
+          ],
+        },
+        { store, scenario },
+      );
+
+      expect(response.choices[0].message.content).toBe("Ich heiße Leonie Hartmann.");
+      expect(response.x_fsp.correlation.session_id_source).toBe("created");
+      expect(response.x_fsp.patient_behavior?.intent).toBe("patient.repeat");
+      expect(response.x_fsp.patient_behavior?.match_strategy).toMatch(/semantic/);
+    });
+
+    it.each(["Guten", "Guten Tag", "Hallo", "Hi"] as const)(
+      "maps greeting clipping %s",
+      (question) => {
+        const response = ask(question);
+
+        expect(response.choices[0].message.content).toMatch(/Guten|Hallo/i);
+        expect(response.x_fsp.patient_behavior?.intent).toBe("smalltalk.greeting");
+        expect(response.x_fsp.patient_behavior?.match_strategy).toMatch(/semantic/);
+      },
+    );
+
+    it("uses patient-name context for objectless spelling and keeps Leonie correct", () => {
+      const response = ask("Buchstabieren Sie bitte");
+      const content = response.choices[0].message.content;
+
+      expect(content).toContain("Leonie: L - E - O - N - I - E.");
+      expect(content).not.toContain("L - E - U - N - I - E");
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.full_name_spelling");
+    });
+
+    it("answers DOB even after a previous thanks or closing turn", () => {
+      const response = processChatCompletion(
+        {
+          messages: [
+            { role: "user", content: "Danke." },
+            { role: "assistant", content: "Gern. Auf Wiedersehen." },
+            { role: "user", content: "Wann sind Sie geboren?" },
+          ],
+        },
+        { store, scenario },
+      );
+
+      expect(response.choices[0].message.content).toBe(
+        "Ich bin am vierzehnter Februar neunzehnhundertsiebenundneunzig geboren.",
+      );
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.dob");
+      expect(response.x_fsp.patient_behavior?.fallback_reason).toBeNull();
+    });
+
+    it.each([
+      "ANA-Titer?",
+      "Ana Titer?",
+      "Anatiter?",
+      "Anatita?",
+      "Anathema?",
+      "Titer?",
+      "Blutwert?",
+      "Wert?",
+      "Wie hoch ist Ihr Anatita Wert?",
+    ] as const)("blocks ANA/STT lab variant %s without leaking values", (question) => {
+      const response = ask(question);
+      const content = response.choices[0].message.content;
+
+      expect(content).toBe("Die genauen Blutwerte kenne ich nicht.");
+      expect(content).not.toMatch(/1:640|95 IU|ANA positiv|Anti-dsDNA/i);
+      expect(response.x_fsp.patient_behavior?.intent).toBe("laboratory");
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
+      expect(response.x_fsp.patient_behavior?.match_strategy).toMatch(/semantic/);
+    });
+
+    it.each([
+      "Haben Sie SLE?",
+      "Haben Sie SLR?",
+      "Haben Sie SLA?",
+      "Ist das Lupus?",
+      "Wurde Ihnen Lupus gesagt?",
+    ] as const)("blocks diagnosis leak for SLE/STT variant %s", (question) => {
+      const response = ask(question);
+      const content = response.choices[0].message.content;
+
+      expect(content).toMatch(/bisher nicht gesagt|Abkürzung bedeutet/i);
+      expect(content).not.toMatch(/\bSLE\b|systemischer Lupus|ANA|1:640|95 IU/i);
+      expect(response.x_fsp.patient_behavior?.intent).toBe("diagnosis.hidden");
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
+    });
+
+    it("clarifies medium-confidence anamnesis instead of generic unknown", () => {
+      const response = ask("Wie ist es denn bitte mit den Beschwerden?");
+
+      expect(response.choices[0].message.content).toContain("Meinen Sie");
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("clarify");
+      expect(response.x_fsp.patient_behavior?.fallback_reason).toBe(
+        "semantic_medium_confidence",
+      );
+    });
+  });
+
   describe("biography (patient_known from scenario.patient)", () => {
     it("returns name from patient block", () => {
       const response = ask("Wie heißen Sie?");
@@ -796,6 +968,30 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
       });
       const content = parseSseContent(await response.text());
       expect(content).toContain("Leonie Hartmann");
+    });
+
+    it("stream:true resolves semantic opener without fsp_session_id", async () => {
+      const response = await postChat({
+        stream: true,
+        messages: [{ role: "user", content: "Warum sind Sie heute zu uns gekommen?" }],
+      });
+
+      const content = parseSseContent(await response.text());
+      expect(content).toMatch(/Schmerzen.*Hand|Hand.*Schmerzen/i);
+      expect(content).not.toMatch(/müde|Temperatur|Blut/i);
+    });
+
+    it("non-streaming exposes semantic matcher metadata without fsp_session_id", async () => {
+      const response = await postChat({
+        messages: [{ role: "user", content: "Was führt Sie heute denn zu uns?" }],
+      });
+      const body = await response.json();
+
+      expect(body.choices[0].message.content).toMatch(/Schmerzen.*Hand|Hand.*Schmerzen/i);
+      expect(body.x_fsp.correlation.session_id_source).toBe("created");
+      expect(body.x_fsp.patient_behavior.intent).toBe("chief_complaint.opener");
+      expect(body.x_fsp.patient_behavior.match_strategy).toMatch(/semantic/);
+      expect(body.x_fsp.patient_behavior.intent_score).toBeGreaterThanOrEqual(0.8);
     });
 
     it("non-streaming resolves de-jargonized lab Wert phrasing", async () => {

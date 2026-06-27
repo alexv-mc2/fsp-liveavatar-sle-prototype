@@ -51,6 +51,12 @@ Set in **Project → Settings → Environment Variables**, then redeploy:
 
 Never commit values. Never log `HEYGEN_API_KEY` or `session_token` in application logs.
 
+## Preview/manual-review duration policy
+
+The repo default is `1200` seconds. If a Preview deployment has `LIVEAVATAR_MAX_SESSION_SECONDS` set below 1080 seconds, the runtime raises only that Preview value to `1080` seconds (`18` minutes) for manual review sessions. Production keeps the configured env value exactly as set; no Production env value is changed by this code path.
+
+This exists because diagnostic run `fsp-liveavatar-diag-4589df10` disconnected with `SERVER_INITIATED` after about five minutes while the manual review expected about eighteen minutes.
+
 ## Manual verification order
 
 1. Add env vars in Vercel → **Redeploy**

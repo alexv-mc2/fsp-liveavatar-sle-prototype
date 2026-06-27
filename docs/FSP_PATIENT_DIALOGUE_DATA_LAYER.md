@@ -30,9 +30,13 @@ The only canonical additions in this slice are explicit dialogue negatives for c
 
 ## Code Mapping
 
-`src/server/fsp/patientBehavior/dialogueData.ts` loads and validates the YAML files with Zod. `classifyQuestion.ts` uses universal intents and examiner-only blocks. `factMatcher.ts` combines canonical `trigger_keywords` with case-pack aliases using whole-word matching to avoid collisions such as `bier` inside `buchstabieren` or `sehen` inside `Wiedersehen`. `focusedFactResponse.ts` renders short asked-only German answers from the case pack before falling back to canonical fact text.
+`src/server/fsp/patientBehavior/dialogueData.ts` loads and validates the YAML files with Zod. `classifyQuestion.ts` uses universal intents and examiner-only blocks. `semanticIntent.ts` runs before fallback and scores normalized LiveAvatar/STT input by meaning: lowercased and umlaut-folded text, punctuation stripping, filler/polite phrase removal, STT alias expansion, word-order tolerant token matching, and semantic slots such as opener reason/arrival, fatigue, temperature, repeat, lab-value blocker, and hidden-diagnosis blocker. `factMatcher.ts` remains the canonical fact safety net and combines canonical `trigger_keywords` with case-pack aliases using whole-word matching to avoid collisions such as `bier` inside `buchstabieren` or `sehen` inside `Wiedersehen`. `focusedFactResponse.ts` renders short asked-only German answers from the case pack before falling back to canonical fact text.
 
-The endpoint metadata under `x_fsp.patient_behavior` preserves the existing fields and adds optional `matched_fact_id`, `matched_alias_id`, and `fallback_reason`.
+The endpoint metadata under `x_fsp.patient_behavior` preserves the existing fields and adds optional `matched_fact_id`, `matched_alias_id`, `intent_score`, `match_strategy`, and `fallback_reason`.
+
+## Why Direct Smoke Passed While LiveAvatar Failed
+
+The earlier direct smoke used exact scripted phrases such as canonical opener and lab strings. Alex's LiveAvatar run exposed the real risk: STT clipped words, inserted filler words like `bitte`, `denn`, `heute`, changed word order, and produced learner-German fragments such as `Was Problem?`, `Anatita`, `Anathema`, `SLR`, or `Können Sie das bitte`. Exact alias matching could pass the smoke while the voice path still fell through to `Das weiß ich leider nicht.` The semantic scorer is intentionally tested with inserted filler words, clipped STT, wrong word order, `stream:true`, no `fsp_session_id`, and message-history repeat cases.
 
 ## Adding Future Cases
 
