@@ -38,7 +38,7 @@ export const LIVEAVATAR_DEFAULTS = {
   SANDBOX: true,
 } as const;
 
-export const LIVEAVATAR_PREVIEW_MANUAL_REVIEW_MIN_SECONDS = 1080;
+export const LIVEAVATAR_PREVIEW_MANUAL_REVIEW_SECONDS = 300;
 
 export type LiveAvatarInteractivityType = "PUSH_TO_TALK" | "CONVERSATIONAL";
 
@@ -97,7 +97,7 @@ export type HeyGenEnvSnapshot = {
   >;
   runtimeDefaults: typeof LIVEAVATAR_DEFAULTS;
   envPolicy: {
-    maxSessionSecondsReason: "preview_manual_review_minimum" | null;
+    maxSessionSecondsReason: "preview_provider_accepted_limit" | null;
   };
   /** Parsed runtime values when session-token env is complete; null when not configured. */
   runtimeResolved: {
@@ -173,11 +173,11 @@ function resolveMaxSessionSeconds(): {
   );
   if (
     readTrimmed("VERCEL_ENV") === "preview" &&
-    configured < LIVEAVATAR_PREVIEW_MANUAL_REVIEW_MIN_SECONDS
+    configured !== LIVEAVATAR_PREVIEW_MANUAL_REVIEW_SECONDS
   ) {
     return {
-      value: LIVEAVATAR_PREVIEW_MANUAL_REVIEW_MIN_SECONDS,
-      reason: "preview_manual_review_minimum",
+      value: LIVEAVATAR_PREVIEW_MANUAL_REVIEW_SECONDS,
+      reason: "preview_provider_accepted_limit",
     };
   }
   return { value: configured, reason: null };

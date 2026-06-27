@@ -15,20 +15,76 @@ export type CreateSessionTokenData = {
   session_token: string;
 };
 
+export type LiveAvatarTokenRequestDiagnostics = {
+  phase: "liveavatar_token_request" | "liveavatar_token_response";
+  payload: Record<string, unknown>;
+};
+
 export class LiveAvatarApiError extends Error {
   readonly status: number;
   readonly code: "liveavatar_api_error" | "liveavatar_timeout" | "liveavatar_invalid_response";
+  readonly providerStatus?: number;
+  readonly providerCode?: number | string | null;
+  readonly providerMessagePrefix?: string | null;
+  readonly requestMaxSessionSeconds?: number;
 
   constructor(
     message: string,
     status: number,
     code: LiveAvatarApiError["code"] = "liveavatar_api_error",
+    metadata: {
+      providerStatus?: number;
+      providerCode?: number | string | null;
+      providerMessagePrefix?: string | null;
+      requestMaxSessionSeconds?: number;
+    } = {},
   ) {
     super(message);
     this.name = "LiveAvatarApiError";
     this.status = status;
     this.code = code;
+    this.providerStatus = metadata.providerStatus;
+    this.providerCode = metadata.providerCode;
+    this.providerMessagePrefix = metadata.providerMessagePrefix;
+    this.requestMaxSessionSeconds = metadata.requestMaxSessionSeconds;
   }
+}
+
+function safeProviderMessagePrefix(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return null;
+  }
+  return normalized.length > 120 ? normalized.slice(0, 120) : normalized;
+}
+
+function readProviderMessage(payload: LiveAvatarApiEnvelope<unknown> | null): string | null {
+  const nestedError =
+    payload &&
+    typeof payload === "object" &&
+    "error" in payload &&
+    payload.error &&
+    typeof payload.error === "object"
+      ? (payload.error as { message?: unknown })
+      : null;
+
+  return safeProviderMessagePrefix(payload?.message ?? nestedError?.message);
+}
+
+function readProviderCode(payload: LiveAvatarApiEnvelope<unknown> | null): number | string | null {
+  const nestedError =
+    payload &&
+    typeof payload === "object" &&
+    "error" in payload &&
+    payload.error &&
+    typeof payload.error === "object"
+      ? (payload.error as { code?: unknown })
+      : null;
+  const code = payload?.code ?? nestedError?.code;
+  return typeof code === "number" || typeof code === "string" ? code : null;
 }
 
 export function buildLiveAvatarApiUrl(
@@ -76,15 +132,41 @@ export function buildCreateSessionTokenBody(
 
 async function parseLiveAvatarResponse<T>(
   response: Response,
+  diagnostics: {
+    maxSessionSeconds: number;
+    onDiagnostics?: (event: LiveAvatarTokenRequestDiagnostics) => void;
+  },
 ): Promise<LiveAvatarApiEnvelope<T>> {
   const payload = (await response.json().catch(() => null)) as
     | LiveAvatarApiEnvelope<T>
     | null;
+  const providerCode = readProviderCode(payload as LiveAvatarApiEnvelope<unknown> | null);
+  const providerMessagePrefix = readProviderMessage(
+    payload as LiveAvatarApiEnvelope<unknown> | null,
+  );
+
+  diagnostics.onDiagnostics?.({
+    phase: "liveavatar_token_response",
+    payload: {
+      ok: response.ok,
+      http_status: response.status,
+      provider_code: providerCode,
+      provider_message_prefix: providerMessagePrefix,
+      max_session_seconds: diagnostics.maxSessionSeconds,
+    },
+  });
 
   if (!response.ok) {
     throw new LiveAvatarApiError(
       "LiveAvatar session token request failed.",
       502,
+      "liveavatar_api_error",
+      {
+        providerStatus: response.status,
+        providerCode,
+        providerMessagePrefix,
+        requestMaxSessionSeconds: diagnostics.maxSessionSeconds,
+      },
     );
   }
 
@@ -140,8 +222,11 @@ export async function fetchLiveAvatarLlmConfigurationBaseUrl(
 export async function mintLiveAvatarSessionToken(
   config: LiveAvatarRuntimeConfig,
   fetchFn: typeof fetch = fetch,
-  options: { fspSessionId?: string } = {},
-): Promise<{ sessionId: string; sessionToken: string }> {
+  options: {
+    fspSessionId?: string;
+    onDiagnostics?: (event: LiveAvatarTokenRequestDiagnostics) => void;
+  } = {},
+): Promise<{ sessionId: string; sessionToken: string; maxSessionSeconds: number }> {
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort(),
@@ -150,6 +235,21 @@ export async function mintLiveAvatarSessionToken(
 
   let response: Response;
   try {
+    options.onDiagnostics?.({
+      phase: "liveavatar_token_request",
+      payload: {
+        mode: "FULL",
+        has_avatar_id: Boolean(config.avatarId),
+        has_context_id: Boolean(config.contextId),
+        has_voice_id: Boolean(config.voiceId),
+        has_llm_configuration_id: Boolean(config.llmConfigurationId),
+        interactivity_type: config.interactivityType,
+        max_session_seconds: config.maxSessionSeconds,
+        sandbox: config.sandbox,
+        language: config.language,
+        api_base_host: new URL(config.apiBaseUrl).host,
+      },
+    });
     response = await fetchFn(
       buildLiveAvatarApiUrl(config.apiBaseUrl, LIVEAVATAR_SESSION_TOKEN_PATH),
       {
@@ -174,6 +274,7 @@ export async function mintLiveAvatarSessionToken(
         "LiveAvatar API request timed out.",
         504,
         "liveavatar_timeout",
+        { requestMaxSessionSeconds: config.maxSessionSeconds },
       );
     }
     throw error;
@@ -181,7 +282,10 @@ export async function mintLiveAvatarSessionToken(
     clearTimeout(timeout);
   }
 
-  const payload = await parseLiveAvatarResponse<CreateSessionTokenData>(response);
+  const payload = await parseLiveAvatarResponse<CreateSessionTokenData>(response, {
+    maxSessionSeconds: config.maxSessionSeconds,
+    onDiagnostics: options.onDiagnostics,
+  });
 
   if (!payload.data?.session_id || !payload.data.session_token) {
     throw new LiveAvatarApiError(
@@ -194,5 +298,6 @@ export async function mintLiveAvatarSessionToken(
   return {
     sessionId: payload.data.session_id,
     sessionToken: payload.data.session_token,
+    maxSessionSeconds: config.maxSessionSeconds,
   };
 }

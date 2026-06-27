@@ -142,11 +142,14 @@ export function parseSessionTokenResponse(
 
   if ("error" in payload) {
     const err = payload as HeyGenSessionTokenError;
+    const debugReason = err.error?.debug?.reason;
     return {
       ok: false,
       kind: "error",
       status,
-      message: err.error?.message ?? "LiveAvatar Session-Token fehlgeschlagen.",
+      message: debugReason
+        ? `${err.error?.message ?? "LiveAvatar Session-Token fehlgeschlagen."} Debug: ${debugReason}`
+        : (err.error?.message ?? "LiveAvatar Session-Token fehlgeschlagen."),
     };
   }
 

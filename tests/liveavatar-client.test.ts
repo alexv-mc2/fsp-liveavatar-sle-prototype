@@ -155,6 +155,27 @@ describe("liveavatar clientApi", () => {
         message: "upstream failed",
       });
     });
+
+    it("adds actionable debug reason from session-token failures", () => {
+      const parsed = parseSessionTokenResponse(502, {
+        error: {
+          code: "liveavatar_api_error",
+          message: "LiveAvatar session token request failed.",
+          debug: {
+            reason:
+              "HeyGen rejected session-token request with status 400 at max_session_seconds=1080.",
+          },
+        },
+      });
+
+      expect(parsed).toMatchObject({
+        ok: false,
+        kind: "error",
+        status: 502,
+        message:
+          "LiveAvatar session token request failed. Debug: HeyGen rejected session-token request with status 400 at max_session_seconds=1080.",
+      });
+    });
   });
 
   describe("requestHeyGenSessionToken", () => {

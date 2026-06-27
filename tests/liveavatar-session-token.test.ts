@@ -195,21 +195,31 @@ describe("LiveAvatar session token minting", () => {
     expect(fetchFn).toHaveBeenCalledOnce();
   });
 
-  it("normalizes provider 4xx failures to 502 without leaking provider message", async () => {
+  it("normalizes provider 4xx failures to 502 with sanitized diagnostics", async () => {
     setConfiguredLiveAvatarEnv(false);
     const runtime = readLiveAvatarRuntimeConfig()!;
+    const diagnostics: unknown[] = [];
 
     const fetchFn = vi.fn(async () =>
       Response.json(
-        { message: "Invalid API key secret-value-leak" },
+        { code: 4001, message: "max_session_duration must be <= 300" },
         { status: 401 },
       ),
     );
 
-    await expect(mintLiveAvatarSessionToken(runtime, fetchFn)).rejects.toMatchObject({
+    await expect(
+      mintLiveAvatarSessionToken(runtime, fetchFn, {
+        onDiagnostics: (event) => diagnostics.push(event),
+      }),
+    ).rejects.toMatchObject({
       status: 502,
       message: "LiveAvatar session token request failed.",
+      providerStatus: 401,
+      providerCode: 4001,
+      providerMessagePrefix: "max_session_duration must be <= 300",
     });
+    expect(JSON.stringify(diagnostics)).toContain("max_session_duration");
+    expect(JSON.stringify(diagnostics)).not.toContain("test-api-key");
   });
 
   it("createHeyGenSessionToken returns ok payload with mocked provider", async () => {
@@ -235,6 +245,7 @@ describe("LiveAvatar session token minting", () => {
       expect(payload.fsp_session_id).toBe(fspSession.id);
       expect(payload.provider_session_id).toBe(TEST_IDS.providerSession);
       expect(payload.session_token).toBe("provider-session-token-value");
+      expect(payload.max_session_seconds).toBe(1200);
       expect(payload.custom_llm_url).toBe(
         "https://fsp-liveavatar-sle-prototype.vercel.app/v1/chat/completions",
       );
@@ -298,18 +309,22 @@ describe("LiveAvatar session token route", () => {
     });
   });
 
-  it("raises short Preview manual-review sessions without changing Production env semantics", () => {
+  it("uses the provider-accepted Preview duration without changing Production env semantics", () => {
     setConfiguredLiveAvatarEnv(false, false);
     process.env.VERCEL_ENV = "preview";
     process.env[EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS] = "300";
 
-    expect(readLiveAvatarRuntimeConfig()?.maxSessionSeconds).toBe(1080);
+    expect(readLiveAvatarRuntimeConfig()?.maxSessionSeconds).toBe(300);
+    expect(readHeyGenEnvSnapshot().envPolicy?.maxSessionSecondsReason).toBeNull();
+
+    process.env[EXPO_WALL_LIVEAVATAR_ENV.MAX_SESSION_SECONDS] = "1080";
+    expect(readLiveAvatarRuntimeConfig()?.maxSessionSeconds).toBe(300);
     expect(readHeyGenEnvSnapshot().envPolicy?.maxSessionSecondsReason).toBe(
-      "preview_manual_review_minimum",
+      "preview_provider_accepted_limit",
     );
 
     process.env.VERCEL_ENV = "production";
-    expect(readLiveAvatarRuntimeConfig()?.maxSessionSeconds).toBe(300);
+    expect(readLiveAvatarRuntimeConfig()?.maxSessionSeconds).toBe(1080);
     expect(readHeyGenEnvSnapshot().envPolicy?.maxSessionSecondsReason).toBeNull();
   });
 });

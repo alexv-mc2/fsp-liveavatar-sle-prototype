@@ -53,9 +53,9 @@ Never commit values. Never log `HEYGEN_API_KEY` or `session_token` in applicatio
 
 ## Preview/manual-review duration policy
 
-The repo default is `1200` seconds. If a Preview deployment has `LIVEAVATAR_MAX_SESSION_SECONDS` set below 1080 seconds, the runtime raises only that Preview value to `1080` seconds (`18` minutes) for manual review sessions. Production keeps the configured env value exactly as set; no Production env value is changed by this code path.
+The repo default is `1200` seconds. Preview deployments use `300` seconds for LiveAvatar session-token creation because HeyGen accepted the previous Preview setup at that value, while the attempted `1080`-second manual-review override blocked token creation before the SDK could start. Production keeps the configured env value exactly as set; no Production env value is changed by this code path.
 
-This exists because diagnostic run `fsp-liveavatar-diag-4589df10` disconnected with `SERVER_INITIATED` after about five minutes while the manual review expected about eighteen minutes.
+The 18-minute manual-review expectation remains a HeyGen/provider configuration blocker until a higher accepted `max_session_duration` is verified without breaking session-token minting. The debug route logs the selected `max_session_seconds`, provider response status, and safe provider message prefix when token creation fails.
 
 ## Manual verification order
 

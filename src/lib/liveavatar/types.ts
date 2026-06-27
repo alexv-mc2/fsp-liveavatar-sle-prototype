@@ -35,6 +35,7 @@ export type HeyGenSessionTokenOk = {
   provider_session_id: string;
   fsp_session_id: string;
   interactivity_type?: LiveAvatarInteractivityMode;
+  max_session_seconds?: number;
 };
 
 export type HeyGenSessionTokenNotConfigured = {
@@ -44,5 +45,16 @@ export type HeyGenSessionTokenNotConfigured = {
 };
 
 export type HeyGenSessionTokenError = {
-  error: { code: string; message: string };
+  error: {
+    code: string;
+    message: string;
+    debug?: {
+      reason?: string;
+      provider_status?: number;
+      provider_code?: number | string | null;
+      provider_message_prefix?: string | null;
+      max_session_seconds?: number | null;
+      request_id?: string;
+    };
+  };
 };
