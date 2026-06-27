@@ -186,10 +186,6 @@ export function isChiefComplaintOpenerQuestion(input: string): boolean {
 export function inferBiographyIntent(input: string): string | null {
   const normalized = normalizePatientText(input);
 
-  if (/\b(wiederholen|noch einmal|nochmal|repeat)\b/.test(normalized)) {
-    return "biography.repeat";
-  }
-
   if (
     /\b(vorname|vornamen)\b/.test(normalized) &&
     /\bbuchstab/.test(normalized)
@@ -207,13 +203,10 @@ export function inferBiographyIntent(input: string): string | null {
   }
 
   if (
-    /\b(hausarzt|hausarztin|hausarztpraxis|family doctor)\b/.test(normalized)
-  ) {
-    return "biography.gp";
-  }
-
-  if (
-    /\b(groesse|koerpergroesse|wie gross|wie gross sind|körpergröße)\b/.test(normalized)
+    /\b(groesse|koerpergroesse|wie gross|wie grosse|wie gross sind|körpergröße)\b/.test(
+      normalized,
+    ) ||
+    /\bwie gross\b.*\bsie\b/.test(normalized)
   ) {
     return "biography.height";
   }
@@ -224,12 +217,16 @@ export function inferBiographyIntent(input: string): string | null {
   ) {
     return "biography.weight_change";
   }
-  if (/\b(gewicht|wie viel wiegen|wiegen sie|wie viel wiegst)\b/.test(normalized)) {
+  if (
+    /\b(gewicht|wie viel wiegen|wiegen sie|wie viel wiegst|was wiegen sie)\b/.test(
+      normalized,
+    )
+  ) {
     return "biography.weight";
   }
 
   if (
-    /\b(geburtsdatum|geboren|geburtstag|geb|wann sind sie geboren|datum der geburt)\b/.test(
+    /\b(geburtsdatum|geboren|geburtstag|geb|wann sind sie geboren|wann geboren|datum der geburt|geboren datum)\b/.test(
       normalized,
     ) ||
     (/\bdatum\b/.test(normalized) && /\b(geburt|geboren)\b/.test(normalized))

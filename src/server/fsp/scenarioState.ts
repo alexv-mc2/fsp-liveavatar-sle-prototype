@@ -28,7 +28,7 @@ export class InMemorySessionStore {
       factRevealEvents: [],
       safetyFlags: [],
       patientQuestionIndex: 0,
-      lastBiographyResponseDe: null,
+      lastPatientResponseDe: null,
       startedAt: now,
       updatedAt: now,
     };
@@ -66,7 +66,7 @@ export class InMemorySessionStore {
     existing.factRevealEvents = [];
     existing.safetyFlags = [];
     existing.patientQuestionIndex = 0;
-    existing.lastBiographyResponseDe = null;
+    existing.lastPatientResponseDe = null;
     existing.startedAt = now;
     existing.updatedAt = now;
     existing.endedAt = undefined;
@@ -110,7 +110,7 @@ export class InMemorySessionStore {
       factRevealEvents: session.factRevealEvents.map((event) => ({ ...event })),
       safetyFlags: [...session.safetyFlags],
       patientQuestionIndex: session.patientQuestionIndex,
-      lastBiographyResponseDe: session.lastBiographyResponseDe,
+      lastPatientResponseDe: session.lastPatientResponseDe,
       startedAt: session.startedAt,
       updatedAt: session.updatedAt,
       endedAt: session.endedAt,

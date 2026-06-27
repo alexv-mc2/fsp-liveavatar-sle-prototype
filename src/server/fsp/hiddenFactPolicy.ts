@@ -14,8 +14,11 @@ export function resolveHiddenFacts(
   input: string,
   session: SessionState,
   scenario: SleScenario,
+  options: {
+    conversationLastAssistantDe?: string | null;
+  } = {},
 ): HiddenFactResolution {
-  const behavior = resolvePatientResponse(input, session, scenario);
+  const behavior = resolvePatientResponse(input, session, scenario, options);
   return {
     responseDe: behavior.responseDe,
     revealedFactIds: behavior.revealedFactIds,

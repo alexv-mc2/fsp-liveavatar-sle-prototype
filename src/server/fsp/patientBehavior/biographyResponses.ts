@@ -2,6 +2,10 @@ import { normalizePatientText } from "./normalize";
 import type { ResponseClass } from "./types";
 import type { SleScenario } from "../types";
 
+function spellNameSlow(name: string): string {
+  return `${name}: ${name.toUpperCase().split("").join(" - ")}.`;
+}
+
 export function buildBiographyResponse(
   intent: string,
   scenario: SleScenario,
@@ -18,17 +22,17 @@ export function buildBiographyResponse(
       };
     case "biography.given_name_spelling":
       return {
-        responseDe: patient.given_name_spelling_de,
+        responseDe: spellNameSlow(patient.given_name),
         responseClass: "neutral_default",
       };
     case "biography.family_name_spelling":
       return {
-        responseDe: patient.family_name_spelling_de,
+        responseDe: spellNameSlow(patient.family_name),
         responseClass: "neutral_default",
       };
     case "biography.full_name_spelling":
       return {
-        responseDe: `Mein Vorname ist ${patient.given_name_spelling_de}, mein Nachname ${patient.family_name_spelling_de}.`,
+        responseDe: `${spellNameSlow(patient.given_name)} ${spellNameSlow(patient.family_name)}`,
         responseClass: "neutral_default",
       };
     case "biography.dob":
@@ -64,7 +68,7 @@ export function buildBiographyResponse(
       };
     case "biography.gp":
       return {
-        responseDe: `Mein Hausarzt ist ${patient.gp_name_de} in der ${patient.gp_practice_de}.`,
+        responseDe: `Mein Hausarzt ist ${patient.gp_name_de} in Düsseldorf.`,
         responseClass: "neutral_default",
       };
     case "biography.occupation":
@@ -111,7 +115,7 @@ export function inferRepeatBiographyIntent(input: string): string | null {
       ? "biography.weight_change"
       : "biography.weight";
   }
-  if (/\b(hausarzt|hausarztin)\b/.test(normalized)) {
+  if (/\b(hausarzt|hausarztin|haus arzt|haus artz)\b/.test(normalized)) {
     return "biography.gp";
   }
   return null;

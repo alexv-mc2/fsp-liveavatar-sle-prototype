@@ -113,7 +113,7 @@ export interface SessionState {
   factRevealEvents: FactRevealEvent[];
   safetyFlags: string[];
   patientQuestionIndex: number;
-  lastBiographyResponseDe: string | null;
+  lastPatientResponseDe: string | null;
   startedAt: string;
   updatedAt: string;
   endedAt?: string;
@@ -129,7 +129,7 @@ export interface SerializedSessionState {
   factRevealEvents: FactRevealEvent[];
   safetyFlags: string[];
   patientQuestionIndex: number;
-  lastBiographyResponseDe: string | null;
+  lastPatientResponseDe: string | null;
   startedAt: string;
   updatedAt: string;
   endedAt?: string;

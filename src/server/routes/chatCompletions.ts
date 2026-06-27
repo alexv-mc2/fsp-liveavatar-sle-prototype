@@ -7,6 +7,7 @@ import {
 } from "../debug/routeProof";
 import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
+import { findLastAssistantResponse } from "../fsp/patientBehavior/conversationHistory";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
 import { buildAuthoritativePatientContext } from "../fsp/promptBuilder";
 import {
@@ -151,7 +152,7 @@ function buildVadNoopResponse(
           factRevealEvents: [],
           safetyFlags: [],
           patientQuestionIndex: 0,
-          lastBiographyResponseDe: null,
+          lastPatientResponseDe: null,
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         } satisfies SerializedSessionState);
@@ -253,10 +254,17 @@ export function processChatCompletion(
   } else if (session.phase === "patient_questions") {
     responseDe = respondToPatientQuestionPhase(scenario, session);
   } else {
-    const resolution = resolveHiddenFacts(userText, session, scenario);
+    const conversationLastAssistantDe = findLastAssistantResponse(parsed.messages);
+    const resolution = resolveHiddenFacts(userText, session, scenario, {
+      conversationLastAssistantDe,
+    });
     responseDe = resolution.responseDe;
     blockedFactIds = resolution.blockedFactIds;
     patientBehavior = resolution.behavior;
+  }
+
+  if (!guardrail.blocked && isPatientConversationPhase(session.phase)) {
+    session.lastPatientResponseDe = responseDe;
   }
 
   if (!guardrail.blocked) {

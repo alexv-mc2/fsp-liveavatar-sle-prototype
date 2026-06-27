@@ -3,6 +3,7 @@ import {
   buildBiographyResponse,
   inferRepeatBiographyIntent,
 } from "./biographyResponses";
+import { isGpQuestion, isPartialGpSttFragment } from "./gpQuestion";
 import {
   detectQuestionQualities,
   getExaminerOnlyIntent,
@@ -16,11 +17,14 @@ import {
   isLeadingQuestion,
   isRaynaudColorQuestion,
 } from "./classifyQuestion";
+import { buildFocusedFactResponse } from "./focusedFactResponse";
 import {
   isImperfectLabSttQuestion,
+  isLikelyMisunderstoodQuestion,
   isUnclearTruncatedQuestion,
   REPEAT_QUESTION_CLARIFY_DE,
 } from "./imperfectSttRecovery";
+import { isRepeatRequest, WHAT_TO_REPEAT_CLARIFY_DE } from "./repeatRequest";
 import { matchScenarioFacts } from "./factMatcher";
 import { normalizePatientText } from "./normalize";
 import type { PatientBehaviorResolution, ResponseClass } from "./types";
@@ -115,9 +119,53 @@ export function resolvePatientResponse(
   input: string,
   session: SessionState,
   scenario: SleScenario,
+  options: {
+    conversationLastAssistantDe?: string | null;
+  } = {},
 ): PatientBehaviorResolution {
   const normalizedInput = normalizePatientText(input);
   const questionQuality = detectQuestionQualities(input);
+  const priorAnswer =
+    session.lastPatientResponseDe ?? options.conversationLastAssistantDe ?? null;
+
+  const resolveRepeat = (): PatientBehaviorResolution | null => {
+    if (!isRepeatRequest(input)) {
+      return null;
+    }
+    if (priorAnswer) {
+      return {
+        responseDe: priorAnswer,
+        responseClass: "neutral_default",
+        revealedFactIds: [],
+        blockedFactIds: [],
+        matchedKeywords: [],
+        intent: "patient.repeat",
+        questionQuality,
+      };
+    }
+    const repeatTarget = inferRepeatBiographyIntent(input);
+    if (repeatTarget) {
+      const bio = buildBiographyResponse(repeatTarget, scenario, input);
+      return {
+        responseDe: bio.responseDe,
+        responseClass: bio.responseClass,
+        revealedFactIds: [],
+        blockedFactIds: [],
+        matchedKeywords: [],
+        intent: "patient.repeat",
+        questionQuality,
+      };
+    }
+    return {
+      responseDe: WHAT_TO_REPEAT_CLARIFY_DE,
+      responseClass: "clarify",
+      revealedFactIds: [],
+      blockedFactIds: [],
+      matchedKeywords: [],
+      intent: "patient.repeat.clarify",
+      questionQuality,
+    };
+  };
 
   if (isImperfectLabSttQuestion(input)) {
     const factMatches = matchScenarioFacts(scenario.facts, normalizedInput);
@@ -186,47 +234,48 @@ export function resolvePatientResponse(
     };
   }
 
+  const repeatResolution = resolveRepeat();
+  if (repeatResolution) {
+    return repeatResolution;
+  }
+
+  if (isPartialGpSttFragment(input)) {
+    return {
+      responseDe: "Meinen Sie meinen Hausarzt?",
+      responseClass: "clarify",
+      revealedFactIds: [],
+      blockedFactIds: [],
+      matchedKeywords: [],
+      intent: "clarify.gp",
+      questionQuality,
+    };
+  }
+
+  if (isGpQuestion(input)) {
+    const gp = buildBiographyResponse("biography.gp", scenario, input);
+    return {
+      responseDe: gp.responseDe,
+      responseClass: gp.responseClass,
+      revealedFactIds: [],
+      blockedFactIds: [],
+      matchedKeywords: [],
+      intent: "biography.gp",
+      questionQuality,
+    };
+  }
+
   const bioIntent = inferBiographyIntent(input);
   if (bioIntent) {
-    if (bioIntent === "biography.repeat") {
-      if (session.lastBiographyResponseDe) {
-        return {
-          responseDe: session.lastBiographyResponseDe,
-          responseClass: "neutral_default",
-          revealedFactIds: [],
-          blockedFactIds: [],
-          matchedKeywords: [],
-          intent: "biography.repeat",
-          questionQuality,
-        };
-      }
-      const repeatTarget = inferRepeatBiographyIntent(input);
-      if (repeatTarget) {
-        const bio = buildBiographyResponse(repeatTarget, scenario, input);
-        session.lastBiographyResponseDe = bio.responseDe;
-        return {
-          responseDe: bio.responseDe,
-          responseClass: bio.responseClass,
-          revealedFactIds: [],
-          blockedFactIds: [],
-          matchedKeywords: [],
-          intent: "biography.repeat",
-          questionQuality,
-        };
-      }
-    } else {
-      const bio = buildBiographyResponse(bioIntent, scenario, input);
-      session.lastBiographyResponseDe = bio.responseDe;
-      return {
-        responseDe: bio.responseDe,
-        responseClass: bio.responseClass,
-        revealedFactIds: [],
-        blockedFactIds: [],
-        matchedKeywords: [],
-        intent: bioIntent,
-        questionQuality,
-      };
-    }
+    const bio = buildBiographyResponse(bioIntent, scenario, input);
+    return {
+      responseDe: bio.responseDe,
+      responseClass: bio.responseClass,
+      revealedFactIds: [],
+      blockedFactIds: [],
+      matchedKeywords: [],
+      intent: bioIntent,
+      questionQuality,
+    };
   }
 
   if (isChiefComplaintOpenerQuestion(input)) {
@@ -288,6 +337,17 @@ export function resolvePatientResponse(
     preferFactIds.push("raynaud_negative");
     excludeFactIds.push("joint_pain_pattern");
   }
+  if (
+    /\b(roetung|rotung|rötung|ausschlag)\b/.test(normalizedInput) &&
+    /\b(gesicht|wange|nase)\b/.test(normalizedInput) &&
+    !/\b(sonne|licht|sonnen)\b/.test(normalizedInput)
+  ) {
+    preferFactIds.push("butterfly_rash");
+    excludeFactIds.push("photosensitivity");
+  }
+  if (isGpQuestion(input)) {
+    excludeFactIds.push("family_status");
+  }
 
   const factMatches = matchScenarioFacts(scenario.facts, normalizedInput, {
     preferFactIds,
@@ -318,6 +378,17 @@ export function resolvePatientResponse(
         blockedFactIds: [],
         matchedKeywords: [],
         intent: "concerns",
+        questionQuality,
+      };
+    }
+    if (isLikelyMisunderstoodQuestion(input)) {
+      return {
+        responseDe: REPEAT_QUESTION_CLARIFY_DE,
+        responseClass: "clarify",
+        revealedFactIds: [],
+        blockedFactIds: [],
+        matchedKeywords: [],
+        intent: "unclear.repeat",
         questionQuality,
       };
     }
@@ -358,7 +429,7 @@ export function resolvePatientResponse(
     return resolution;
   }
 
-  let surfaced = allowed.slice(0, 2);
+  let surfaced = allowed.slice(0, 1);
 
   if (isLeadingQuestion(input) && surfaced.length > 0) {
     const negated = surfaced.find((m) =>
@@ -379,7 +450,7 @@ export function resolvePatientResponse(
     : "case_positive";
 
   return {
-    responseDe: surfaced.map((entry) => entry.fact.answer_de).join(" "),
+    responseDe: buildFocusedFactResponse(surfaced[0].fact, input),
     responseClass,
     revealedFactIds: newlyRevealed,
     blockedFactIds: blocked.map((entry) => entry.fact.id),

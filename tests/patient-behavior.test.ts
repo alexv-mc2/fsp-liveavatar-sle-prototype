@@ -74,35 +74,69 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
       expect(response.choices[0].message.content).toContain("Grundschullehrerin");
     });
 
-    it("returns full name spelling", () => {
+    it("returns full name spelling with slow TTS-friendly letters", () => {
       const response = ask("Buchstabieren Sie bitte Ihren Namen");
-      expect(response.choices[0].message.content).toBe(
-        "Mein Vorname ist L-E-O-N-I-E, mein Nachname H-A-R-T-M-A-N-N.",
-      );
+      const content = response.choices[0].message.content;
+      expect(content).toMatch(/Leonie: L - E - O - N - I - E/);
+      expect(content).toMatch(/Hartmann: H - A - R - T - M - A - N - N/);
       expect(response.x_fsp.patient_behavior?.intent).toBe("biography.full_name_spelling");
     });
 
-    it("returns given name spelling", () => {
+    it("returns given name spelling with spaced letters", () => {
       const response = ask("Können Sie Ihren Vornamen buchstabieren?");
-      expect(response.choices[0].message.content).toBe("L-E-O-N-I-E");
+      expect(response.choices[0].message.content).toBe("Leonie: L - E - O - N - I - E.");
       expect(response.x_fsp.patient_behavior?.intent).toBe("biography.given_name_spelling");
     });
 
-    it("returns family name spelling", () => {
+    it("returns family name spelling with spaced letters", () => {
       const response = ask("Können Sie Ihren Nachnamen buchstabieren?");
-      expect(response.choices[0].message.content).toBe("H-A-R-T-M-A-N-N");
+      expect(response.choices[0].message.content).toBe("Hartmann: H - A - R - T - M - A - N - N.");
       expect(response.x_fsp.patient_behavior?.intent).toBe("biography.family_name_spelling");
     });
 
-    it("repeats the last biography answer on wiederholen", () => {
+    it.each([
+      "Können Sie das bitte wiederholen?",
+      "Bitte wiederholen",
+      "Noch einmal bitte",
+      "Wie bitte?",
+      "Ich habe Sie nicht verstanden",
+      "Sagen Sie das nochmal",
+    ] as const)("repeat %s returns prior answer in session", (question) => {
       const session = store.create(scenario);
-      const first = askInSession("Wie heißen Sie?", session.id);
-      expect(first.choices[0].message.content).toBe("Ich heiße Leonie Hartmann.");
-
-      const repeat = askInSession("Können Sie das bitte wiederholen?", session.id);
+      askInSession("Wie heißen Sie?", session.id);
+      const repeat = askInSession(question, session.id);
       expect(repeat.choices[0].message.content).toBe("Ich heiße Leonie Hartmann.");
-      expect(repeat.x_fsp.patient_behavior?.intent).toBe("biography.repeat");
-      expect(repeat.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+      expect(repeat.x_fsp.patient_behavior?.intent).toBe("patient.repeat");
+    });
+
+    it("repeats prior answer from message history without session state", () => {
+      const response = processChatCompletion(
+        {
+          messages: [
+            { role: "user", content: "Wann sind Sie geboren?" },
+            {
+              role: "assistant",
+              content:
+                "Ich bin am vierzehnter Februar neunzehnhundertsiebenundneunzig geboren.",
+            },
+            { role: "user", content: "Können Sie das bitte wiederholen?" },
+          ],
+        },
+        { store, scenario },
+      );
+      expect(response.choices[0].message.content).toBe(
+        "Ich bin am vierzehnter Februar neunzehnhundertsiebenundneunzig geboren.",
+      );
+      expect(response.x_fsp.patient_behavior?.intent).toBe("patient.repeat");
+    });
+
+    it("asks what to repeat when no prior answer exists", () => {
+      const response = ask("Können Sie das bitte wiederholen?");
+      expect(response.choices[0].message.content).toBe(
+        "Entschuldigung, was soll ich wiederholen?",
+      );
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("clarify");
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
     });
 
     it("returns date of birth in spoken form", () => {
@@ -140,9 +174,63 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
     it("returns Hausarzt from patient block", () => {
       const response = ask("Wie heißt Ihr Hausarzt?");
       expect(response.choices[0].message.content).toBe(
-        "Mein Hausarzt ist Dr. Markus Schneider in der Hausarztpraxis Dr. Schneider in Düsseldorf.",
+        "Mein Hausarzt ist Dr. Markus Schneider in Düsseldorf.",
       );
       expect(response.x_fsp.patient_behavior?.intent).toBe("biography.gp");
+    });
+
+    it.each([
+      "Haus Arzt",
+      "Haus Artz",
+      "Hausärztin",
+      "Familienarzt",
+      "Wie heißt mein Arzt?",
+    ] as const)("GP STT variant %s does not mention home or living", (question) => {
+      const response = ask(question);
+      expect(response.choices[0].message.content).toBe(
+        "Mein Hausarzt ist Dr. Markus Schneider in Düsseldorf.",
+      );
+      expect(response.choices[0].message.content).not.toMatch(/wohnen|zuhause|Mann|Tochter/i);
+      expect(response.x_fsp.patient_behavior?.intent).toBe("biography.gp");
+    });
+
+    it("clarifies partial Haus STT instead of unknown", () => {
+      const response = ask("Haus");
+      expect(response.choices[0].message.content).toBe("Meinen Sie meinen Hausarzt?");
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("clarify");
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+    });
+  });
+
+  describe("voice behavior: strict asked-only answers", () => {
+    it("answers tiredness without school or work", () => {
+      const response = ask("Fühlen Sie sich müde?");
+      expect(response.choices[0].message.content).toBe(
+        "Ja, ich bin seit etwa acht Wochen ungewöhnlich müde.",
+      );
+      expect(response.choices[0].message.content).not.toMatch(/Schule|Lehrerin|Beruf/i);
+    });
+
+    it("answers temperature without Schüttelfrost unless asked", () => {
+      const response = ask("Hatten Sie erhöhte Temperatur?");
+      expect(response.choices[0].message.content).toBe(
+        "Ja, manchmal bis ungefähr 38,2 Grad.",
+      );
+      expect(response.choices[0].message.content).not.toMatch(/Schüttelfrost/i);
+    });
+
+    it("answers face redness only without sun exposure", () => {
+      const response = ask("Haben Sie eine Rötung im Gesicht bemerkt?");
+      expect(response.choices[0].message.content).toMatch(/Rötung.*Wangen|Wangen.*Rötung/i);
+      expect(response.choices[0].message.content).not.toMatch(/Sonne|sonnen/i);
+    });
+
+    it("asks to repeat truncated poor German instead of unknown", () => {
+      const response = ask("Wie hoch ist");
+      expect(response.choices[0].message.content).toBe(
+        "Entschuldigung, können Sie die Frage bitte wiederholen?",
+      );
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
     });
   });
 
@@ -162,10 +250,10 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
     });
 
     it.each([
-      ["Sind Sie müde oder erschöpft?", /müde|erschöpft|erledigt/i],
-      ["Haben Sie eine Rötung im Gesicht bemerkt?", /Wangen|Nase|Rötung/i],
-      ["Hatten Sie erhöhte Temperatur?", /37,8|38,2|Temperatur|Fieber/i],
-      ["Haben Sie ungewollt abgenommen?", /Kilo|abgenommen/i],
+      ["Sind Sie müde oder erschöpft?", /ungewöhnlich müde/i],
+      ["Haben Sie eine Rötung im Gesicht bemerkt?", /Rötung.*Wangen|Wangen.*Rötung/i],
+      ["Hatten Sie erhöhte Temperatur?", /38,2 Grad/i],
+      ["Haben Sie ungewollt abgenommen?", /drei Kilo|abgenommen/i],
     ] as const)("follow-up %s is answered when specifically asked", (question, pattern) => {
       const response = ask(question);
       expect(response.choices[0].message.content).toMatch(pattern);
@@ -176,7 +264,8 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
       expect(opener.choices[0].message.content).not.toMatch(/müde|erschöpft/i);
 
       const followUp = ask("Fühlen Sie sich müde?");
-      expect(followUp.choices[0].message.content).toMatch(/müde|erledigt/i);
+      expect(followUp.choices[0].message.content).toMatch(/müde/i);
+      expect(followUp.choices[0].message.content).not.toMatch(/Schule|Lehrerin/i);
     });
   });
 
