@@ -90,15 +90,58 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
 
     it("blocks de-jargonized lab Wert phrasing from run 1e8567c2", () => {
       const response = ask("Was ist mit dem Wert bitte?");
-      expect(response.choices[0].message.content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(response.choices[0].message.content).toMatch(/Blutwerte|Arzt erklären/i);
       expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
       expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
     });
 
     it("blocks canonical ANA-Titer phrasing", () => {
       const response = ask("Wie hoch ist Ihr ANA-Titer?");
-      expect(response.choices[0].message.content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(response.choices[0].message.content).toMatch(/Blutwerte|Arzt erklären/i);
       expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
+    });
+  });
+
+  describe("imperfect learner German / STT recovery", () => {
+    const labDeferral = /Blutwerte|Arzt erklären/i;
+
+    it.each([
+      "Wie hoch ist Ihr A1-Titer?",
+      "Wie hoch ist Ihr Ana Titer?",
+      "Anatiter?",
+      "Was ist mit dem Wert?",
+      "Blutwert?",
+    ] as const)("lab STT variant %s → deferral not unknown", (question) => {
+      const response = ask(question);
+      expect(response.choices[0].message.content).toMatch(labDeferral);
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+      expect(response.choices[0].message.content).not.toMatch(/^Nein,/);
+    });
+
+    it("asks to repeat truncated Wie hoch ist", () => {
+      const response = ask("Wie hoch ist");
+      expect(response.choices[0].message.content).toBe(
+        "Entschuldigung, können Sie die Frage bitte wiederholen?",
+      );
+      expect(response.x_fsp.patient_behavior?.response_class).toBe("clarify");
+      expect(response.choices[0].message.content).not.toBe(scenario.fallbacks.unknown_de);
+    });
+
+    it("Raynaud lay answer without medical jargon", () => {
+      const response = ask("Werden Ihre Finger bei Kälte weiß oder blau?");
+      expect(response.choices[0].message.content).toMatch(/nicht bemerkt/i);
+      expect(response.choices[0].message.content).not.toMatch(/Raynaud|triphas|Handgelenk/i);
+    });
+
+    it("preserves canonical name, age, drugs, joints", () => {
+      expect(ask("Wie heißen Sie?").choices[0].message.content).toContain("Leonie Hartmann");
+      expect(ask("Wie alt sind Sie?").choices[0].message.content).toContain("29 Jahre alt");
+      expect(ask("Nehmen Sie Drogen?").choices[0].message.content).toMatch(/keine Drogen/i);
+      expect(ask("Seit wann bestehen die Beschwerden?").choices[0].message.content).toContain(
+        "sechs Wochen",
+      );
+      expect(ask("Haben Sie Gelenkschmerzen?").choices[0].message.content).toMatch(/Handgelenk|Finger/i);
     });
 
     it("routes Raynaud color-change before joint finger pain", () => {
@@ -110,8 +153,9 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
         scenario,
       );
       expect(resolution.responseClass).toBe("case_negative");
-      expect(resolution.responseDe).toMatch(/Nein.*weiß|blau/i);
-      expect(resolution.responseDe).not.toMatch(/Handgelenk|Fingergrund/i);
+      expect(resolution.responseDe).toMatch(/nicht bemerkt/i);
+      expect(resolution.responseDe).toMatch(/weiß|blau/i);
+      expect(resolution.responseDe).not.toMatch(/Raynaud|triphas|Handgelenk|Fingergrund/i);
       expect(resolution.revealedFactIds).toContain("raynaud_negative");
       expect(resolution.revealedFactIds).not.toContain("joint_pain_pattern");
     });
@@ -218,7 +262,7 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
   describe("examiner-only blocks", () => {
     it("blocks ANA titer in anamnesis", () => {
       const response = ask("Wie hoch ist Ihr ANA-Titer?");
-      expect(response.choices[0].message.content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(response.choices[0].message.content).toMatch(/Blutwerte|Arzt erklären/i);
       expect(response.x_fsp.patient_behavior?.response_class).toBe("examiner_only_block");
       expect(response.choices[0].message.content).not.toContain("1:640");
     });
@@ -330,7 +374,7 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
       });
       const content = parseSseContent(await response.text());
       expect(content).not.toContain("95 IU");
-      expect(content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(content).toMatch(/Blutwerte|Arzt erklären/i);
     });
 
     it("stream:true resolves STT name alias Wie nennen Sie sich?", async () => {
@@ -347,8 +391,26 @@ describe("Patient behavior engine (Frau Leonie Hartmann / SLE)", () => {
         messages: [{ role: "user", content: "Was ist mit dem Wert bitte?" }],
       });
       const body = await response.json();
-      expect(body.choices[0].message.content).toMatch(/Laborwerte|Unterlagen/i);
+      expect(body.choices[0].message.content).toMatch(/Blutwerte|Arzt erklären/i);
       expect(body.x_fsp.patient_behavior.response_class).toBe("examiner_only_block");
+    });
+
+    it("stream:true defers imperfect A1-Titer STT variant", async () => {
+      const response = await postChat({
+        stream: true,
+        messages: [{ role: "user", content: "Wie hoch ist Ihr A1-Titer?" }],
+      });
+      const content = parseSseContent(await response.text());
+      expect(content).toMatch(/Blutwerte|Arzt erklären/i);
+    });
+
+    it("non-streaming asks to repeat truncated Wie hoch ist", async () => {
+      const response = await postChat({
+        messages: [{ role: "user", content: "Wie hoch ist" }],
+      });
+      const body = await response.json();
+      expect(body.choices[0].message.content).toContain("wiederholen");
+      expect(body.x_fsp.patient_behavior.response_class).toBe("clarify");
     });
   });
 });

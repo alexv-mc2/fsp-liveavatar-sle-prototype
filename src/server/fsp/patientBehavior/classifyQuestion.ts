@@ -32,6 +32,7 @@ const EXAMINER_ONLY_PATTERNS: Array<{ pattern: RegExp; intent: string }> = [
   { pattern: /\b(ist das|haben sie).*(lupus|rheuma bekannt|sle)\b/i, intent: "diagnosis.hidden" },
   { pattern: /\b(eular|acr|klassifikation|klassifikationspunkte|punkte haben sie)\b/i, intent: "classification" },
   { pattern: /\b(ana|anti[- ]?dsdna|anti[- ]?sm|komplement|c3|c4|bsg|crp|kreatinin|upcr|proteinurie)\b/i, intent: "laboratory" },
+  { pattern: /\b(a1|anatiter|ana titer|ana[- ]titer)\b/i, intent: "laboratory" },
   { pattern: /\b(laborwert|blutwert|titer|antikorper|antikörper)\b/i, intent: "laboratory" },
   { pattern: /\b(differentialdiagnos|bewertungsbogen|therapie.*vorgesehen|behandlung.*empfehl)\b/i, intent: "examiner.meta" },
   { pattern: /\b(herzbeutelerguss|pleuraerguss|nierenbefund|untersucher.*festgestellt)\b/i, intent: "examiner.physical" },
@@ -145,6 +146,7 @@ export function getExaminerOnlyIntent(input: string): string | null {
   if (isDejargonizedLabResultQuestion(input)) {
     return "laboratory";
   }
+  // Imperfect lab STT is checked again before unknown; also catch early via patterns below.
   for (const { pattern, intent } of EXAMINER_ONLY_PATTERNS) {
     if (pattern.test(normalized)) {
       return intent;

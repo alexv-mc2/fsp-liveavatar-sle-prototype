@@ -11,6 +11,11 @@ import {
   isLeadingQuestion,
   isRaynaudColorQuestion,
 } from "./classifyQuestion";
+import {
+  isImperfectLabSttQuestion,
+  isUnclearTruncatedQuestion,
+  REPEAT_QUESTION_CLARIFY_DE,
+} from "./imperfectSttRecovery";
 import { matchScenarioFacts } from "./factMatcher";
 import { normalizePatientText } from "./normalize";
 import type { PatientBehaviorResolution, ResponseClass } from "./types";
@@ -141,6 +146,20 @@ export function resolvePatientResponse(
 ): PatientBehaviorResolution {
   const normalizedInput = normalizePatientText(input);
   const questionQuality = detectQuestionQualities(input);
+
+  if (isImperfectLabSttQuestion(input)) {
+    const factMatches = matchScenarioFacts(scenario.facts, normalizedInput);
+    const blocked = factMatches.filter(
+      (match) =>
+        match.fact.visibility === "examiner_only" ||
+        !match.fact.allowed_phases.includes(session.phase),
+    );
+    const resolution = resolveExaminerBlock(scenario, "laboratory");
+    resolution.blockedFactIds = blocked.map((entry) => entry.fact.id);
+    resolution.matchedKeywords = blocked.map((entry) => entry.keyword);
+    return resolution;
+  }
+
   const examinerIntent = getExaminerOnlyIntent(input);
 
   if (examinerIntent) {
@@ -263,6 +282,20 @@ export function resolvePatientResponse(
   });
 
   if (factMatches.length === 0) {
+    if (isImperfectLabSttQuestion(input)) {
+      return resolveExaminerBlock(scenario, "laboratory");
+    }
+    if (isUnclearTruncatedQuestion(input)) {
+      return {
+        responseDe: REPEAT_QUESTION_CLARIFY_DE,
+        responseClass: "clarify",
+        revealedFactIds: [],
+        blockedFactIds: [],
+        matchedKeywords: [],
+        intent: "unclear.repeat",
+        questionQuality,
+      };
+    }
     if (/\b(stress|sorgen|erwartung|befurcht|angst)\b/.test(normalizedInput)) {
       return {
         responseDe:
