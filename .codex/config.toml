@@ -1,0 +1,15 @@
+# Safe project entry. Consequential roles are launched from MC2 Dev Control
+# with explicit central profiles; this file must not weaken those profiles.
+default_permissions = ":read-only"
+approval_policy = "never"
+
+[features]
+network_proxy = true
+multi_agent = false
+
+[mcp_servers.notion]
+url = "https://mcp.notion.com/mcp"
+auth = "oauth"
+enabled = true
+required = false
+enabled_tools = ["notion-search", "notion-fetch", "notion-query-data-sources"]

@@ -1,0 +1,39 @@
+{
+  "schema_version": "mc2-project-control-v1",
+  "project_id": "fsp-liveavatar-sle",
+  "display_name": "FSP LiveAvatar SLE",
+  "repository": {"github": "alexv-mc2/fsp-liveavatar-sle-prototype", "default_branch": "main"},
+  "instructions": {"entrypoints": ["AGENTS.md", "README.md", "docs/ARCHITECTURE.md"], "preserve_stronger_rules": true},
+  "authorities": {
+    "code_sha_pr_ci": [
+      {"kind": "git", "value": "exact Git object", "authority": "PRIMARY", "notes": "Git object identity is authoritative for local code."},
+      {"kind": "github", "value": "default branch, PRs and checks", "authority": "PRIMARY", "notes": "Refresh live state before consequential work."}
+    ],
+    "current_state": [
+      {"kind": "github", "value": "default branch and open PRs", "authority": "PRIMARY", "notes": "Live repository state and review status."},
+      {"kind": "repository_file", "value": "README.md", "authority": "PRIMARY", "notes": "Current prototype scope, local workflow, and documented limitations."},
+      {"kind": "repository_file", "value": "docs/ARCHITECTURE.md", "authority": "SECONDARY", "notes": "Architecture and boundary context."}
+    ],
+    "active_plan": [
+      {"kind": "github", "value": "owner-approved open PR or issue", "authority": "PRIMARY", "notes": "No repository plan file is designated as dynamic authority."},
+      {"kind": "repository_file", "value": "README.md", "authority": "SECONDARY", "notes": "Use documented next work only after owner authorization."}
+    ],
+    "validation": [
+      {"kind": "repository_file", "value": "package.json", "authority": "PRIMARY", "notes": "Project lint, typecheck, test, and build scripts."},
+      {"kind": "github", "value": "checks on exact candidate SHA", "authority": "PRIMARY", "notes": "Hosted acceptance state."}
+    ],
+    "release_production": [
+      {"kind": "repository_file", "value": "README.md", "authority": "PRIMARY", "notes": "Prototype and local-first release boundary."},
+      {"kind": "owner", "value": "medical-content and production release approval", "authority": "PRIMARY", "notes": "Physician/FSP trainer review and owner approval remain hard gates."}
+    ]
+  },
+  "notion": {"status": "NOT_VERIFIED", "targets": [], "notes": "No unambiguous existing project root was discovered. Do not invent or create one."},
+  "runtime": {
+    "contracts_owner": "MC2_DEV_CONTROL",
+    "project_default_permission": ":read-only",
+    "task_permission_source": "CENTRAL_FULL_ACCESS_PROFILE",
+    "review_boundary": "FRESH_TOP_LEVEL_READ_ONLY",
+    "subagent_policy": "MC2_DEV_CONTROL/contracts/ROLE_CONTRACTS.md",
+    "escalation": "MC2_DEV_CONTROL/templates/REVIEW_AND_ESCALATION_PACKETS.md"
+  }
+}
