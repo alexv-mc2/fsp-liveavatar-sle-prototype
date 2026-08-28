@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { toHttpError } from "./errorResponse";
-import { extractDiagnosticRunId } from "../debug/diagnosticLogger";
+import {
+  extractDiagnosticRunId,
+  logDiagnosticEvent,
+} from "../debug/diagnosticLogger";
 import { decodeSessionTokenClaimsSanitized } from "../debug/jwtClaimsSanitized";
 import {
   liveAvatarDiagnosticStore,
   registerFspSessionOnRun,
   registerProviderSessionOnRun,
 } from "../debug/liveAvatarDiagnosticStore";
+import { sanitizeDiagnosticPayload } from "../debug/diagnosticSanitize";
 import {
   createHeyGenSessionToken,
   enrichHeyGenStatusRouteProof,
@@ -51,7 +55,40 @@ export async function handleHeyGenSessionTokenPost(request: Request) {
       }
     }
 
-    const payload = await createHeyGenSessionToken(rawBody);
+    const recordTokenDiagnostic = (
+      phase: string,
+      payload: Record<string, unknown>,
+    ) => {
+      const enriched = {
+        ...payload,
+        request_id: requestId,
+        diagnostic_run_id: diagnosticRunId ?? null,
+      };
+      const appended = diagnosticRunId
+        ? liveAvatarDiagnosticStore.appendEvent(
+            diagnosticRunId,
+            phase,
+            enriched,
+            "server",
+            requestId,
+          )
+        : undefined;
+      if (!appended) {
+        logDiagnosticEvent({
+          diagnostic_run_id: diagnosticRunId ?? "unscoped",
+          phase,
+          source: "server",
+          request_id: requestId,
+          payload: enriched,
+        });
+      }
+    };
+
+    const payload = await createHeyGenSessionToken(rawBody, {
+      onDiagnostics: (event) => {
+        recordTokenDiagnostic(event.phase, event.payload);
+      },
+    });
 
     if (payload.status === "not_configured") {
       if (diagnosticRunId) {
@@ -92,6 +129,7 @@ export async function handleHeyGenSessionTokenPost(request: Request) {
         {
           interactivity_type: payload.interactivity_type,
           provider_session_id_prefix: payload.provider_session_id.slice(0, 8),
+          max_session_seconds: payload.max_session_seconds,
           latency_ms: Date.now() - startedAt,
         },
         "server",
@@ -120,25 +158,58 @@ export async function handleHeyGenSessionTokenPost(request: Request) {
       headers: { "x-fsp-request-id": requestId },
     });
   } catch (error) {
+    const safeErrorPayload =
+      error instanceof LiveAvatarApiError
+        ? {
+            message: error.message,
+            code: error.code,
+            provider_status: error.providerStatus ?? null,
+            provider_code: error.providerCode ?? null,
+            provider_message_prefix: error.providerMessagePrefix ?? null,
+            max_session_seconds: error.requestMaxSessionSeconds ?? null,
+          }
+        : {
+            message:
+              error instanceof Error ? error.message.slice(0, 120) : "unknown",
+          };
+
     if (diagnosticRunId) {
       liveAvatarDiagnosticStore.appendEvent(
         diagnosticRunId,
         "session_token_failure",
-        {
-          message:
-            error instanceof Error ? error.message.slice(0, 120) : "unknown",
-        },
+        safeErrorPayload,
         "server",
         requestId,
       );
+    } else {
+      logDiagnosticEvent({
+        diagnostic_run_id: "unscoped",
+        phase: "session_token_failure",
+        source: "server",
+        request_id: requestId,
+        payload: safeErrorPayload,
+      });
     }
 
     if (error instanceof LiveAvatarApiError) {
+      const debugPayload = diagnosticRunId
+        ? sanitizeDiagnosticPayload({
+            request_id: requestId,
+            provider_status: error.providerStatus ?? null,
+            provider_code: error.providerCode ?? null,
+            provider_message_prefix: error.providerMessagePrefix ?? null,
+            max_session_seconds: error.requestMaxSessionSeconds ?? null,
+            reason: error.providerStatus
+              ? `HeyGen rejected session-token request with status ${error.providerStatus} at max_session_seconds=${error.requestMaxSessionSeconds ?? "unknown"}.`
+              : null,
+          })
+        : undefined;
       return NextResponse.json(
         {
           error: {
             code: error.code,
             message: error.message,
+            ...(debugPayload ? { debug: debugPayload } : {}),
           },
         },
         { status: error.status, headers: { "x-fsp-request-id": requestId } },

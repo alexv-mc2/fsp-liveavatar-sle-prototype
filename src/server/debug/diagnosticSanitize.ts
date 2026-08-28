@@ -2,7 +2,9 @@ const SECRET_KEY_PATTERN =
   /secret|token|api[_-]?key|authorization|password|bearer/i;
 
 function sanitizeStringValue(key: string, value: string): string {
-  if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) {
+  if (
+    /^[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}$/.test(value)
+  ) {
     return `[jwt:${value.length}]`;
   }
   if (SECRET_KEY_PATTERN.test(key)) {
@@ -60,4 +62,13 @@ export function prefixUuid(value: string | undefined | null): string | undefined
     return undefined;
   }
   return value.length >= 8 ? `${value.slice(0, 8)}…` : value;
+}
+
+/** Sanitized user transcript prefix for custom-LLM logs (no full PHI). */
+export function sanitizeUserTextPrefix(text: string, maxLen = 48): string {
+  const trimmed = text.trim().replace(/\s+/g, " ");
+  if (!trimmed) {
+    return "";
+  }
+  return trimmed.length > maxLen ? `${trimmed.slice(0, maxLen)}…` : trimmed;
 }

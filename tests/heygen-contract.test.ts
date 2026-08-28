@@ -61,7 +61,7 @@ describe("HeyGen placeholder integration", () => {
     expect(serialized).not.toContain("HEYGEN_API_KEY=");
   });
 
-  it("POST /api/integrations/heygen/session-token returns 404 for unknown FSP session", async () => {
+  it("POST /api/integrations/heygen/session-token does not require same-instance in-memory session", async () => {
     const response = await heygenSessionTokenPost(
       new Request("http://localhost/api/integrations/heygen/session-token", {
         method: "POST",
@@ -73,8 +73,9 @@ describe("HeyGen placeholder integration", () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(404);
-    expect(body.error.code).toBe("session_not_found");
+    expect(response.status).toBe(503);
+    expect(body.status).toBe("not_configured");
+    expect(body.missing_env).toContain(HEYGEN_ENV.LIVEAVATAR_LLM_CONFIGURATION_ID);
   });
 });
 

@@ -1,0 +1,23 @@
+version: 1.0.0
+priority_order:
+  - emergency_boundary
+  - smalltalk.greeting
+  - smalltalk.closing
+  - dialogue.repeat_or_clarify
+  - patient.identity.spelling
+  - patient.identity
+  - clarify.hautarzt_collision
+  - blocked.examiner_only
+  - hpi.chief_complaint
+  - concrete_case_fact
+  - ask_to_repeat
+  - patient_does_not_know
+fallback_policy:
+  ask_to_repeat_de: "Entschuldigung, können Sie die Frage bitte wiederholen?"
+  unknown_allowed_only_when:
+    - exact old dates not known by patient
+    - non-observable private details not in the case pack
+    - facts not plausibly known by a patient
+tts:
+  spelling_format: "slow_letters"
+  spelling_separator: " - "

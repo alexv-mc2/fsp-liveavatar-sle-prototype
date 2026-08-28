@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { liveAvatarDiagnosticStore } from "../debug/liveAvatarDiagnosticStore";
+import { sanitizeUserTextPrefix } from "../debug/diagnosticSanitize";
 import {
   buildCallbackRouteProof,
 } from "../debug/routeProof";
 import { toHttpError } from "./errorResponse";
 import { evaluateGuardrails } from "../fsp/guardrails";
+import { findLastAssistantResponse } from "../fsp/patientBehavior/conversationHistory";
+import { normalizePatientText } from "../fsp/patientBehavior/normalize";
 import { resolveHiddenFacts } from "../fsp/hiddenFactPolicy";
 import { buildAuthoritativePatientContext } from "../fsp/promptBuilder";
 import {
@@ -78,6 +81,16 @@ export interface OpenAIChatCompletionResponse {
       ignored_incoming_system_messages: number;
     };
     session: SerializedSessionState;
+    patient_behavior?: {
+      response_class: string;
+      intent: string | null;
+      question_quality: string[];
+      matched_fact_id?: string | null;
+      matched_alias_id?: string | null;
+      intent_score?: number | null;
+      match_strategy?: string | null;
+      fallback_reason?: string | null;
+    };
   };
 }
 
@@ -145,6 +158,7 @@ function buildVadNoopResponse(
           factRevealEvents: [],
           safetyFlags: [],
           patientQuestionIndex: 0,
+          lastPatientResponseDe: null,
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         } satisfies SerializedSessionState);
@@ -231,6 +245,9 @@ export function processChatCompletion(
   let responseDe: string;
   let blockedFactIds: string[] = [];
   let safetyFlag: string | undefined;
+  let patientBehavior:
+    | ReturnType<typeof resolveHiddenFacts>["behavior"]
+    | undefined;
 
   if (guardrail.blocked) {
     responseDe = guardrail.responseDe ?? scenario.fallbacks.unknown_de;
@@ -243,9 +260,17 @@ export function processChatCompletion(
   } else if (session.phase === "patient_questions") {
     responseDe = respondToPatientQuestionPhase(scenario, session);
   } else {
-    const resolution = resolveHiddenFacts(userText, session, scenario);
+    const conversationLastAssistantDe = findLastAssistantResponse(parsed.messages);
+    const resolution = resolveHiddenFacts(userText, session, scenario, {
+      conversationLastAssistantDe,
+    });
     responseDe = resolution.responseDe;
     blockedFactIds = resolution.blockedFactIds;
+    patientBehavior = resolution.behavior;
+  }
+
+  if (!guardrail.blocked && isPatientConversationPhase(session.phase)) {
+    session.lastPatientResponseDe = responseDe;
   }
 
   if (!guardrail.blocked) {
@@ -304,6 +329,18 @@ export function processChatCompletion(
       },
       grounding,
       session: serialized,
+      patient_behavior: patientBehavior
+        ? {
+            response_class: patientBehavior.responseClass,
+            intent: patientBehavior.intent,
+            question_quality: patientBehavior.questionQuality,
+            matched_fact_id: patientBehavior.matchedFactId ?? null,
+            matched_alias_id: patientBehavior.matchedAliasId ?? null,
+            intent_score: patientBehavior.intentScore ?? null,
+            match_strategy: patientBehavior.matchStrategy ?? null,
+            fallback_reason: patientBehavior.fallbackReason ?? null,
+          }
+        : undefined,
     },
   };
 }
@@ -344,6 +381,15 @@ export async function handleChatCompletionPost(request: Request) {
       body !== null &&
       (body as { stream?: unknown }).stream === true;
 
+    const parsedRequest = OpenAIChatCompletionRequestSchema.safeParse(body);
+    const latestUserResolution = parsedRequest.success
+      ? resolveLatestUserMessage(parsedRequest.data.messages)
+      : null;
+    const latestUserTextPrefix =
+      latestUserResolution?.kind === "text"
+        ? sanitizeUserTextPrefix(latestUserResolution.text)
+        : null;
+
     const result = processChatCompletion(body, { headerSessionId });
 
     const latencyMs = Date.now() - startedAt;
@@ -375,6 +421,18 @@ export async function handleChatCompletionPost(request: Request) {
       has_assistant_content: Boolean(result.choices[0]?.message.content),
       assistant_content_len: result.choices[0]?.message.content?.length ?? 0,
       diagnostic_run_id: diagnosticRunId ?? null,
+      latest_user_text_prefix: latestUserTextPrefix,
+      normalized_user_text_prefix: latestUserTextPrefix
+        ? sanitizeUserTextPrefix(normalizePatientText(latestUserTextPrefix))
+        : null,
+      patient_behavior_present: Boolean(result.x_fsp.patient_behavior),
+      response_class: result.x_fsp.patient_behavior?.response_class ?? null,
+      patient_behavior_intent: result.x_fsp.patient_behavior?.intent ?? null,
+      matched_fact_id: result.x_fsp.patient_behavior?.matched_fact_id ?? null,
+      matched_alias_id: result.x_fsp.patient_behavior?.matched_alias_id ?? null,
+      intent_score: result.x_fsp.patient_behavior?.intent_score ?? null,
+      match_strategy: result.x_fsp.patient_behavior?.match_strategy ?? null,
+      fallback_reason: result.x_fsp.patient_behavior?.fallback_reason ?? null,
       ...routeProof,
     };
 

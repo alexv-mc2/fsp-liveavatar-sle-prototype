@@ -51,6 +51,12 @@ Set in **Project → Settings → Environment Variables**, then redeploy:
 
 Never commit values. Never log `HEYGEN_API_KEY` or `session_token` in application logs.
 
+## Preview/manual-review duration policy
+
+The repo default is `1200` seconds. Preview deployments use `300` seconds for LiveAvatar session-token creation because HeyGen accepted the previous Preview setup at that value, while the attempted `1080`-second manual-review override blocked token creation before the SDK could start. Production keeps the configured env value exactly as set; no Production env value is changed by this code path.
+
+The 18-minute manual-review expectation remains a HeyGen/provider configuration blocker until a higher accepted `max_session_duration` is verified without breaking session-token minting. The debug route logs the selected `max_session_seconds`, provider response status, and safe provider message prefix when token creation fails.
+
 ## Manual verification order
 
 1. Add env vars in Vercel → **Redeploy**
@@ -59,6 +65,8 @@ Never commit values. Never log `HEYGEN_API_KEY` or `session_token` in applicatio
 4. `POST /api/sessions` → copy `id`
 5. `POST /api/integrations/heygen/session-token` with `{ "fsp_session_id": "<uuid>" }` → `status: ok`, `session_token`, `provider_session_id`
 6. Open `https://fsp-liveavatar-sle-prototype.vercel.app/liveavatar` — create FSP session, connect LiveAvatar, test Push-to-Talk
+
+`fsp_session_id` is validated as a UUID and passed to LiveAvatar as a correlation/dynamic variable. The session-token route does not require the same serverless instance to still hold the in-memory FSP session; otherwise Preview can fail intermittently when `/api/sessions` and `/api/integrations/heygen/session-token` land on different lambdas.
 
 **Known limitation:** production tokens currently mint **without `voice_id`** (voice binding deferred). Avatar video may work; ElevenLabs speech depends on HeyGen-side wiring until `HEYGEN_LIVEAVATAR_VOICE_ID` is re-enabled with a valid UUID.
 

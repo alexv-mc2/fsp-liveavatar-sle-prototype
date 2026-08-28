@@ -1,0 +1,50 @@
+version: 1.0.0
+aliases:
+  - id: bad-name-ihre-name
+    input: "Ihre Name bitte"
+    intent: biography.name
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-name-name
+    input: "Name"
+    intent: biography.name
+    provenance: FSP-PREP-PATTERN
+  - id: bad-name-what-is
+    input: "What is your name bitte"
+    intent: biography.name
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-dob-wann-geboren
+    input: "Wann geboren"
+    intent: biography.dob
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-dob-geboren-datum
+    input: "Geboren Datum bitte"
+    intent: biography.dob
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-age-wie-alt-sie
+    input: "Wie alt Sie"
+    intent: biography.age
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-height-wie-gross-sie
+    input: "Wie groß Sie"
+    intent: biography.height
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-weight-gewicht
+    input: "Gewicht"
+    intent: biography.weight
+    provenance: FSP-PREP-PATTERN
+  - id: bad-gp-haus-artz
+    input: "Haus Artz"
+    intent: biography.gp
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-gp-family-doctor
+    input: "Family doctor"
+    intent: biography.gp
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-opener-was-problem
+    input: "Was Problem"
+    intent: chief_complaint.opener
+    provenance: PRODUCT-SYNTHESIS
+  - id: bad-opener-warum-hier
+    input: "Warum hier"
+    intent: chief_complaint.opener
+    provenance: PRODUCT-SYNTHESIS

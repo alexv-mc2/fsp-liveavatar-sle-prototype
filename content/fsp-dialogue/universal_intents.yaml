@@ -1,0 +1,67 @@
+version: 1.0.0
+intents:
+  - id: smalltalk.greeting
+    priority: 10
+    response_class: neutral_default
+    answer_de: "Guten Tag."
+    aliases:
+      - "guten tag"
+      - "guten morgen"
+      - "guten abend"
+      - "hallo"
+      - "tag"
+      - "hi hallo"
+      - "hi äh hallo"
+      - "guten tack"
+      - "ich bin dr"
+      - "können wir anfangen"
+      - "ist es okay wenn ich ihnen ein paar fragen stelle"
+
+  - id: smalltalk.closing
+    priority: 20
+    response_class: neutral_default
+    answer_de: "Auf Wiedersehen."
+    aliases:
+      - "vielen dank"
+      - "danke"
+      - "auf wiedersehen"
+      - "tschüss"
+      - "okay danke tschüss"
+      - "wir sind fertig"
+      - "fertig"
+
+  - id: dialogue.repeat_or_clarify
+    priority: 30
+    response_class: clarify
+    answer_de: "Entschuldigung, können Sie die Frage bitte wiederholen?"
+    aliases:
+      - "wie bitte"
+      - "noch einmal bitte"
+      - "nochmal bitte"
+      - "können sie das bitte wiederholen"
+      - "ich habe sie nicht verstanden"
+      - "bitte langsam"
+      - "sagen sie das nochmal langsam"
+
+  - id: clarify.hautarzt_collision
+    priority: 40
+    response_class: clarify
+    answer_de: "Meinen Sie meinen Hausarzt oder einen Hautarzt?"
+    aliases:
+      - "hautarzt"
+      - "haut arzt"
+      - "haut ärztin"
+      - "hautarzt?"
+
+  - id: chief_complaint.opener
+    priority: 50
+    response_class: case_positive
+    aliases:
+      - "warum sind sie gekommen"
+      - "was führt sie zu uns"
+      - "was fuehrt sie zu uns"
+      - "was ist ihr problem"
+      - "was problem"
+      - "warum hier"
+      - "was bringt sie hier"
+      - "weshalb sind sie hier"

@@ -1,0 +1,60 @@
+version: 1.0.0
+blocks:
+  - id: labs
+    intent: laboratory
+    response_de: "Die genauen Blutwerte kenne ich nicht."
+    aliases:
+      - "ANA"
+      - "ANA-Titer"
+      - "A1-Titer"
+      - "Ana Titer"
+      - "Anatiter"
+      - "Anna Titer"
+      - "anti-dsDNA"
+      - "ENA"
+      - "Sm"
+      - "Ro"
+      - "La"
+      - "Komplement"
+      - "C3"
+      - "C4"
+      - "Kreatinin"
+      - "Proteinurie"
+      - "Proteinurie quantity"
+      - "Blutwert"
+      - "Blutwerte"
+      - "Laborwert"
+      - "Wert"
+      - "Titer"
+  - id: diagnosis
+    intent: diagnosis.hidden
+    response_de: "Das wurde mir bisher nicht gesagt."
+    aliases:
+      - "SLE"
+      - "Lupus"
+      - "Diagnose"
+      - "Differentialdiagnose"
+      - "Verdachtsdiagnose"
+  - id: classification
+    intent: classification
+    response_de: "Mit Punkten oder Klassifikation kenne ich mich nicht aus. Das müsste der Arzt erklären."
+    aliases:
+      - "EULAR"
+      - "ACR"
+      - "EULAR/ACR"
+      - "Kriterien"
+      - "Klassifikation"
+      - "Score"
+      - "Punkte"
+  - id: treatment
+    intent: treatment
+    response_de: "Eine Behandlung wurde mir noch nicht erklärt."
+    aliases:
+      - "Behandlung"
+      - "Therapie"
+      - "Therapieplan"
+      - "Behandlung empfehlen"
+      - "Cortison"
+      - "Kortison"
+      - "Hydroxychloroquin"
+      - "Quensyl"

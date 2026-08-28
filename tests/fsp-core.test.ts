@@ -31,9 +31,9 @@ describe("canonical case opening", () => {
     const session = store.create(scenario);
     const opening = session.transcriptTurns[0]?.content ?? "";
 
-    expect(opening).toContain("sechs Wochen");
+    expect(opening).toContain("Schmerzen");
     expect(opening).toContain("Handgelenke");
-    expect(opening).toContain("Sonne");
+    expect(opening).not.toMatch(/Sonne|erschöpft|Temperatur/i);
     expect(scenario.patient.display_name).toBe("Frau Leonie Hartmann");
     expect(scenario.metadata.content_status).toBe("RECONCILED_V1");
   });
@@ -61,7 +61,7 @@ describe("deterministic hidden-fact policy", () => {
     const response = chat(session.id, "Wie hoch ist Ihr ANA-Titer?");
     const content = response.choices[0].message.content;
 
-    expect(content).toContain("Laborwerte kenne ich nicht");
+    expect(content).toMatch(/Blutwerte kenne ich nicht|Arzt erklären/i);
     expect(content).not.toContain("1:640");
     expect(response.x_fsp.blocked_fact_ids).toContain("lab_ana");
   });
@@ -71,7 +71,7 @@ describe("deterministic hidden-fact policy", () => {
     const response = chat(session.id, "Wie viele EULAR-Punkte haben Sie?");
     const content = response.choices[0].message.content;
 
-    expect(content).toMatch(/Klassifikation|Punkten|Laborwerte kenne ich nicht/i);
+    expect(content).toMatch(/Klassifikation|Punkten|Blutwerte kenne ich nicht|Arzt erklären/i);
     expect(content).not.toContain("25 Punkte");
     expect(response.x_fsp.blocked_fact_ids).toContain("classification_eular_acr");
   });

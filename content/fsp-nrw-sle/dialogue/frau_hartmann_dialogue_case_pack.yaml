@@ -1,0 +1,177 @@
+version: 1.0.0
+case_id: fsp-nrw-sle
+source_of_truth: content/fsp-nrw-sle/02_CASE_SLE_SCENARIO.yaml
+fact_aliases:
+  chief_fatigue:
+    - "müde"
+    - "mued"
+    - "erschöpft"
+    - "erschoepft"
+    - "keine kraft"
+    - "abgeschlagen"
+  timeline_weeks:
+    - "seit wann"
+    - "wie lange"
+    - "wann angefangen"
+    - "wann hat es angefangen"
+    - "beginn"
+  joint_pain_pattern:
+    - "gelenkschmerzen"
+    - "gelenk schmerzen"
+    - "handschmerzen"
+    - "finger schmerzen"
+    - "schmerzen in den fingern"
+    - "fingern"
+    - "welche gelenke"
+    - "wo tut es weh"
+  pain_quality:
+    - "wie fühlt sich der schmerz an"
+    - "schmerz art"
+    - "schmerzart"
+    - "wie stark"
+    - "stark sind die schmerzen"
+    - "skala"
+  morning_stiffness:
+    - "morgensteif"
+    - "morgensteifigkeit"
+    - "morgens steif"
+    - "steifigkeit"
+  butterfly_rash:
+    - "gesicht rot"
+    - "rote wangen"
+    - "rötung im gesicht"
+    - "ausschlag im gesicht"
+  photosensitivity:
+    - "sonne problem"
+    - "sonne"
+    - "licht"
+    - "sonnenlicht"
+  intermittent_fever:
+    - "temperatur"
+    - "erhöhte temperatur"
+    - "fieber"
+    - "schüttelfrost"
+  night_sweats:
+    - "nachtschweiß"
+    - "nacht schwitzen"
+  medication_ibuprofen:
+    - "medikamente"
+    - "medikament"
+    - "tabletten"
+    - "ibu"
+    - "ibuprofen"
+    - "schmerzmittel"
+  allergies_amoxicillin:
+    - "allergien"
+    - "allergie"
+    - "unverträglichkeit"
+  operations_appendectomy:
+    - "vorerkrankungen"
+    - "frühere krankheiten"
+    - "fruehere krankheiten"
+    - "operiert"
+    - "operation"
+  smoking_none:
+    - "rauchen"
+    - "zigarette"
+  alcohol_occasional:
+    - "alkohol"
+    - "wein"
+    - "bier"
+  drugs_none:
+    - "drogen"
+    - "cannabis"
+    - "substanz"
+  family_history:
+    - "krankheiten in ihrer familie"
+    - "familienanamnese"
+    - "familie krank"
+  family_status:
+    - "verheiratet"
+    - "mit wem leben"
+    - "wohnen sie"
+  occupation:
+    - "beruf"
+    - "arbeiten"
+    - "arbeit"
+    - "wo arbeiten sie"
+  gynecology:
+    - "letzte regel"
+    - "periode"
+    - "regelblutung"
+  miscarriage_thrombosis_negative:
+    - "fehlgeburten"
+    - "fehlgeburt"
+  sicca_negative:
+    - "trockene augen"
+    - "trockenen mund"
+    - "trockener mund"
+    - "mund trocken"
+    - "augen trocken"
+  red_flag_renal:
+    - "urin"
+    - "schäumt"
+    - "schaum"
+    - "blut im urin"
+    - "beine geschwollen"
+  red_flag_chest_dyspnea:
+    - "brustschmerzen"
+    - "atemnot"
+    - "husten"
+    - "blut gehustet"
+  red_flag_neurologic:
+    - "krampfanfälle"
+    - "lähmung"
+    - "taubheit"
+  gi_symptoms_negative:
+    - "bauchschmerzen"
+    - "übelkeit"
+    - "erbrechen"
+    - "durchfall"
+  travel_none:
+    - "reise"
+    - "verreist"
+    - "ausland"
+  tick_bite_negative:
+    - "zecke"
+    - "zeckenbiss"
+  asthma_negative:
+    - "asthma"
+  palpitations_negative:
+    - "herzrasen"
+    - "herz schnell"
+focused_answers:
+  chief_fatigue:
+    default_de: "Ja, ich bin seit etwa acht Wochen ungewöhnlich müde."
+  intermittent_fever:
+    default_de: "Ja, manchmal bis ungefähr 38,2 Grad."
+    variants:
+      - when_any: ["schüttelfrost", "schuettelfrost"]
+        answer_de: "Nein, Schüttelfrost hatte ich nicht."
+  butterfly_rash:
+    default_de: "Ja, ich habe eine flache Rötung über den Wangen und der Nase bemerkt."
+  photosensitivity:
+    default_de: "Ja, nach viel Sonne wird mein Gesicht später deutlich röter."
+  weight_loss:
+    default_de: "Ja, ich habe ungefähr drei Kilo in den letzten zwei Monaten abgenommen."
+    variants:
+      - when_any: ["appetit"]
+        answer_de: "Ja, ich habe etwas weniger Appetit."
+  asthma_negative:
+    default_de: "Nein, Asthma habe ich nicht."
+  tick_bite_negative:
+    default_de: "Nein, einen Zeckenbiss hatte ich nicht."
+  palpitations_negative:
+    default_de: "Nein, Herzrasen habe ich nicht bemerkt."
+  pain_quality:
+    default_de: "Es ist eher ein Ziehen und Steifigkeitsgefühl in den Gelenken."
+    variants:
+      - when_any: ["wie stark", "stark", "skala"]
+        answer_de: "An schlechten Tagen etwa sechs bis sieben von zehn."
+  gynecology:
+    default_de: "Meine Periode ist regelmäßig, alle 28 bis 30 Tage."
+    variants:
+      - when_any: ["letzte regel", "wann war"]
+        answer_de: "Die letzte Regel begann vor zwölf Tagen."
+  miscarriage_thrombosis_negative:
+    default_de: "Nein, eine Fehlgeburt oder Abtreibung hatte ich nicht."

@@ -11,8 +11,19 @@ metadata:
 
 patient:
   display_name: "Frau Leonie Hartmann"
+  given_name: "Leonie"
+  family_name: "Hartmann"
+  given_name_spelling_de: "L-E-O-N-I-E"
+  family_name_spelling_de: "H-A-R-T-M-A-N-N"
+  date_of_birth: "14.02.1997"
+  date_of_birth_spoken_de: "vierzehnter Februar neunzehnhundertsiebenundneunzig"
   sex_de: "weiblich"
   age_years: 29
+  height_spoken_de: "ungefähr 168 Zentimeter"
+  weight_current_spoken_de: "ungefähr 59 Kilo"
+  weight_previous_spoken_de: "früher ungefähr 62 Kilo"
+  gp_name_de: "Dr. Markus Schneider"
+  gp_practice_de: "Hausarztpraxis Dr. Schneider in Düsseldorf"
   occupation_de: "Grundschullehrerin"
   family_status_de: "verheiratet, lebt mit Ehemann und Tochter (3 Jahre)"
   emotional_state_de: "besorgt wegen möglicher schwerer Erkrankung und Auswirkung auf Beruf und Kinderwunsch, aber kooperativ"
@@ -20,7 +31,7 @@ patient:
   source_status: "[PROTOTYPE][REVIEW]"
 
 opening:
-  statement_de: "Seit etwa sechs Wochen tun mir beide Hände und Handgelenke weh, morgens sind sie lange steif. Ich bin ständig erschöpft, habe manchmal erhöhte Temperatur, und nach Sonne wird mein Gesicht ganz rot. Ich mache mir Sorgen, dass etwas Ernstes dahintersteckt."
+  statement_de: "Ich habe seit einigen Wochen Schmerzen in beiden Händen und Handgelenken."
   source_status: "[PROTOTYPE]"
 
 facts:
@@ -190,7 +201,7 @@ facts:
     category: family_history
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["familienanamnese", "familie krank", "mutter", "vater", "tante", "erblich", "schilddrüse", "schilddruese", "hashimoto", "rheuma"]
+    trigger_keywords: ["familienanamnese", "familie krank", "mutter", "vater", "tante", "erblich", "schilddrüse", "schilddruese", "hashimoto", "rheuma", "krankheiten in der familie", "krankheiten in ihrer familie", "krankheiten in der familie"]
     answer_de: "Meine Mutter hat Hashimoto. Eine Tante mütterlicherseits hat rheumatoide Arthritis, sie sagt einfach Rheuma."
     checklist_item: family_history
     source_status: "[PROTOTYPE]"
@@ -208,7 +219,7 @@ facts:
     category: gynecology
     visibility: hidden
     allowed_phases: [anamnesis_active, patient_questions]
-    trigger_keywords: ["schwanger", "kinderwunsch", "schwangerschaft", "fehlgeburt", "weitere kind"]
+    trigger_keywords: ["schwanger", "kinderwunsch", "schwangerschaft", "weitere kind"]
     answer_de: "Schwanger bin ich nicht. Wir könnten uns nächstes Jahr noch ein Kind vorstellen. Eine Fehlgeburt hatte ich nicht."
     checklist_item: gynecological_history
     source_status: "[PROTOTYPE][REVIEW]"
@@ -230,6 +241,24 @@ facts:
     answer_de: "Nein, keine Brustschmerzen, keine Luftnot und kein Bluthusten."
     checklist_item: red_flags
     source_status: "[PROTOTYPE]"
+
+  - id: asthma_negative
+    category: respiratory
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["asthma", "asthma bronchiale", "spray"]
+    answer_de: "Nein, Asthma habe ich nicht."
+    checklist_item: red_flags
+    source_status: "[INFERENCE][DIALOGUE-NEGATIVE]"
+
+  - id: palpitations_negative
+    category: cardiovascular
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["herzrasen", "herz schnell", "palpitationen", "stolpern"]
+    answer_de: "Nein, Herzrasen habe ich nicht bemerkt."
+    checklist_item: red_flags
+    source_status: "[INFERENCE][DIALOGUE-NEGATIVE]"
 
   - id: red_flag_renal
     category: organ_involvement
@@ -257,6 +286,95 @@ facts:
     answer_de: "In den letzten Wochen hatte ich keine Erkältung, Magen-Darm- oder Blasenentzündung."
     checklist_item: red_flags
     source_status: "[INFERENCE]"
+
+  - id: oral_ulcers_negative
+    category: mucocutaneous
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["aphthe", "aphthen", "mundgeschwür", "mundgeschwuer", "nasengeschwür", "nasengeschwuer", "geschwür im mund", "geschwuer im mund", "wunde stellen im mund"]
+    answer_de: "Nein, wunde Stellen oder Geschwüre im Mund oder in der Nase habe ich nicht bemerkt."
+    source_status: "[PROTOTYPE]"
+
+  - id: hair_loss_negative
+    category: mucocutaneous
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["haarausfall", "haare ausgefallen", "kahle stellen", "haare verlieren"]
+    answer_de: "Nein, auffälligen Haarausfall oder kahle Stellen habe ich nicht bemerkt."
+    source_status: "[PROTOTYPE]"
+
+  - id: raynaud_negative
+    category: vascular
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["raynaud", "kalte finger", "weiße finger", "weisse finger", "blau", "blasse finger", "finger bei kälte", "finger bei kaelt"]
+    answer_de: "Nein, das habe ich nicht bemerkt. Meine Finger werden bei Kälte nicht weiß oder blau."
+    source_status: "[PROTOTYPE]"
+
+  - id: sicca_negative
+    category: mucocutaneous
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["trockene augen", "trockener mund", "sandgefühl", "sandgefuehl", "sicca", "tränen", "traenen"]
+    answer_de: "Nein, mir sind die Augen oder der Mund nicht dauerhaft sehr trocken aufgefallen."
+    source_status: "[PROTOTYPE]"
+
+  - id: psoriasis_nails_negative
+    category: skin
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["psoriasis", "schuppenflechte", "nagel", "nägel", "naegel", "dactylitis", "wurstfinger"]
+    answer_de: "Nein, Schuppenflechte oder auffällige Nägel habe ich nicht."
+    source_status: "[PROTOTYPE]"
+
+  - id: proximal_weakness_negative
+    category: musculoskeletal
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["kraftlos", "proximal", "treppen", "kamm", "arm heben", "muskelschwäche", "muskelschwaeche"]
+    answer_de: "Nein, ich werde beim Treppensteigen oder Anheben der Arme nicht plötzlich kraftlos."
+    source_status: "[PROTOTYPE]"
+
+  - id: gi_symptoms_negative
+    category: gastrointestinal
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["bauchschmerz", "bauchschmerzen", "übelkeit", "uebelkeit", "erbrechen", "bauch krampf", "appetitlos"]
+    answer_de: "Nein, Bauchschmerzen, Übelkeit, Erbrechen oder Durchfall habe ich nicht bemerkt."
+    source_status: "[PROTOTYPE]"
+
+  - id: travel_none
+    category: social_history
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["ausland", "reise", "tropen", "urlaub", "geimpft", "impfung"]
+    answer_de: "Nein, ich war in letzter Zeit nicht im Ausland."
+    source_status: "[PROTOTYPE]"
+
+  - id: tick_bite_negative
+    category: exposure
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["zecke", "zeckenbiss", "zecken"]
+    answer_de: "Nein, einen Zeckenbiss hatte ich nicht."
+    checklist_item: red_flags
+    source_status: "[INFERENCE][DIALOGUE-NEGATIVE]"
+
+  - id: miscarriage_thrombosis_negative
+    category: gynecology
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["fehlgeburt", "abtreibung", "spontanabort", "blutung schwangerschaft"]
+    answer_de: "Nein, eine Fehlgeburt oder Abtreibung hatte ich nicht."
+    source_status: "[PROTOTYPE]"
+
+  - id: pain_quality
+    category: musculoskeletal
+    visibility: hidden
+    allowed_phases: [anamnesis_active, patient_questions]
+    trigger_keywords: ["schmerzart", "wie fühlen", "wie fuehlen", "brennt", "sticht", "drückt", "drueckt", "stärke", "staerke", "skala", "0 bis 10", "wie stark"]
+    answer_de: "Es ist eher ein Ziehen und Steifigkeitsgefühl in den Gelenken, manchmal richtig schmerzhaft. An schlechten Tagen würde ich sagen etwa sechs bis sieben von zehn."
+    source_status: "[PROTOTYPE]"
 
   - id: lab_ana
     category: laboratory
@@ -333,7 +451,7 @@ facts:
 fallbacks:
   unknown_de: "Das weiß ich leider nicht."
   unrelated_de: "Das gehört nicht zu meinen Beschwerden."
-  lab_in_patient_phase_de: "Meine genauen Laborwerte kenne ich nicht. Das müssten Sie bitte in meinen Unterlagen nachsehen."
+  lab_in_patient_phase_de: "Die genauen Blutwerte kenne ich nicht. Das müsste mir der Arzt erklären."
   classification_in_patient_phase_de: "Mit Punkten oder Klassifikation kenne ich mich nicht aus. Das müsste der Arzt erklären."
   examiner_only_de: "Das weiß ich als Patientin nicht."
   non_patient_phase_de: "Die Patientensimulation ist in dieser Phase pausiert."
